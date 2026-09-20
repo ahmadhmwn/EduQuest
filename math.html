@@ -1,0 +1,1209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>TrigoQuest — Petualangan Trigonometri</title>
+<style>
+  :root{
+    --bg:#0b1020;
+    --bg2:#131a33;
+    --card:#1a2244;
+    --accent:#4fd1c5;
+    --accent2:#f6ad55;
+    --accent3:#fc8181;
+    --text:#e8ecff;
+    --muted:#93a0c8;
+    --good:#48bb78;
+    --bad:#f56565;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    background:radial-gradient(circle at 50% 0%, #1b2450 0%, var(--bg) 60%);
+    color:var(--text);
+    overflow-x:hidden;
+    min-height:100vh;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    min-height:100vh;
+    display:flex;
+    flex-direction:column;
+    padding:12px 14px 90px;
+    position:relative;
+  }
+
+  /* ===== HEADER ===== */
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 4px 14px;
+  }
+  .logo{
+    font-size:20px;
+    font-weight:800;
+    letter-spacing:.5px;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text;
+    background-clip:text;
+    color:transparent;
+  }
+  .logo span{font-size:14px;}
+  .stats{display:flex;gap:8px;}
+  .stat{
+    background:var(--card);
+    border:1px solid #2a3566;
+    border-radius:12px;
+    padding:6px 10px;
+    font-size:12px;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-weight:600;
+  }
+  .stat .ic{font-size:14px;}
+  #statXP{border-color:#4fd1c5;}
+  #statLevel{border-color:#f6ad55;}
+
+  /* ===== WEBGL CANVAS ===== */
+  #glWrap{
+    position:relative;
+    width:100%;
+    height:200px;
+    border-radius:20px;
+    overflow:hidden;
+    background:linear-gradient(160deg,#0e1530,#1a2450);
+    border:1px solid #2a3566;
+    box-shadow:0 10px 30px rgba(0,0,0,.4);
+    margin-bottom:14px;
+  }
+  #glWrap canvas{display:block;width:100%;height:100%;}
+  .glLabel{
+    position:absolute;
+    top:8px;left:12px;
+    font-size:11px;
+    color:var(--muted);
+    letter-spacing:1px;
+    text-transform:uppercase;
+    pointer-events:none;
+  }
+  .glHint{
+    position:absolute;
+    bottom:8px;right:12px;
+    font-size:11px;
+    color:var(--muted);
+    pointer-events:none;
+  }
+
+  /* ===== PROGRESS ===== */
+  .progress-wrap{
+    background:var(--card);
+    border:1px solid #2a3566;
+    border-radius:14px;
+    padding:10px 12px;
+    margin-bottom:14px;
+  }
+  .progress-top{
+    display:flex;justify-content:space-between;
+    font-size:12px;color:var(--muted);margin-bottom:6px;
+  }
+  .bar{
+    height:8px;background:#0d1330;border-radius:8px;overflow:hidden;
+  }
+  .bar>div{
+    height:100%;width:0%;
+    background:linear-gradient(90deg,var(--accent),var(--accent2));
+    border-radius:8px;transition:width .5s ease;
+  }
+
+  /* ===== QUESTION CARD ===== */
+  .card{
+    background:linear-gradient(160deg,var(--card),#141b3a);
+    border:1px solid #2a3566;
+    border-radius:20px;
+    padding:18px 16px;
+    box-shadow:0 12px 30px rgba(0,0,0,.35);
+    animation:pop .35s ease;
+  }
+  @keyframes pop{from{opacity:0;transform:translateY(12px) scale(.98);}to{opacity:1;transform:none;}}
+  .tag{
+    display:inline-block;
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:.5px;
+    text-transform:uppercase;
+    padding:4px 10px;
+    border-radius:20px;
+    background:rgba(79,209,197,.15);
+    color:var(--accent);
+    border:1px solid rgba(79,209,197,.4);
+    margin-bottom:12px;
+  }
+  .question{
+    font-size:17px;
+    line-height:1.5;
+    font-weight:600;
+    margin-bottom:6px;
+  }
+  .question .formula{
+    color:var(--accent2);
+    font-style:italic;
+    font-weight:700;
+  }
+  .hint{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:14px;
+    line-height:1.4;
+  }
+
+  .options{display:flex;flex-direction:column;gap:10px;}
+  .opt{
+    background:#0f1633;
+    border:1.5px solid #2a3566;
+    border-radius:14px;
+    padding:14px 14px;
+    font-size:15px;
+    font-weight:600;
+    color:var(--text);
+    cursor:pointer;
+    display:flex;align-items:center;gap:10px;
+    transition:.18s;
+    text-align:left;
+  }
+  .opt .key{
+    width:26px;height:26px;
+    border-radius:8px;
+    background:#1d2750;
+    display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;color:var(--accent);
+    flex:0 0 auto;
+  }
+  .opt:active{transform:scale(.98);}
+  .opt.correct{
+    border-color:var(--good);
+    background:rgba(72,187,120,.15);
+    animation:glow .6s ease;
+  }
+  .opt.wrong{
+    border-color:var(--bad);
+    background:rgba(245,101,101,.12);
+    animation:shake .4s ease;
+  }
+  .opt.correct .key{background:var(--good);color:#fff;}
+  .opt.wrong .key{background:var(--bad);color:#fff;}
+  @keyframes glow{0%{box-shadow:0 0 0 0 rgba(72,187,120,.6);}100%{box-shadow:0 0 0 14px rgba(72,187,120,0);}}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
+
+  .feedback{
+    margin-top:14px;
+    font-size:13.5px;
+    line-height:1.5;
+    padding:12px;
+    border-radius:12px;
+    display:none;
+  }
+  .feedback.show{display:block;animation:pop .3s ease;}
+  .feedback.ok{background:rgba(72,187,120,.12);border:1px solid rgba(72,187,120,.4);color:#c6f6d5;}
+  .feedback.no{background:rgba(245,101,101,.1);border:1px solid rgba(245,101,101,.4);color:#fed7d7;}
+
+  .btn{
+    margin-top:14px;
+    width:100%;
+    padding:14px;
+    border-radius:14px;
+    border:none;
+    font-size:15px;
+    font-weight:800;
+    letter-spacing:.3px;
+    cursor:pointer;
+    background:linear-gradient(90deg,var(--accent),#38b2ac);
+    color:#04212b;
+    transition:.2s;
+    display:none;
+  }
+  .btn.show{display:block;animation:pop .3s ease;}
+  .btn:active{transform:scale(.97);}
+
+  /* ===== BOTTOM NAV ===== */
+  nav{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    max-width:480px;
+    margin:0 auto;
+    background:rgba(15,20,45,.92);
+    backdrop-filter:blur(14px);
+    border-top:1px solid #2a3566;
+    display:flex;
+    justify-content:space-around;
+    padding:8px 6px calc(8px + env(safe-area-inset-bottom));
+    z-index:50;
+  }
+  .navBtn{
+    flex:1;
+    background:none;border:none;
+    color:var(--muted);
+    font-size:11px;font-weight:700;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:6px 2px;
+    cursor:pointer;
+    border-radius:12px;
+    transition:.2s;
+  }
+  .navBtn .ic{font-size:20px;}
+  .navBtn.active{color:var(--accent);background:rgba(79,209,197,.08);}
+
+  /* ===== MODAL ===== */
+  .modal{
+    position:fixed;inset:0;
+    background:rgba(5,8,20,.85);
+    backdrop-filter:blur(6px);
+    display:none;
+    align-items:center;justify-content:center;
+    padding:20px;z-index:100;
+  }
+  .modal.show{display:flex;}
+  .modalBox{
+    background:linear-gradient(160deg,#1a2244,#10162f);
+    border:1px solid #2a3566;
+    border-radius:22px;
+    padding:24px 20px;
+    width:100%;max-width:360px;
+    text-align:center;
+    animation:pop .35s ease;
+  }
+  .modalBox h2{margin:8px 0 6px;font-size:22px;}
+  .modalBox p{color:var(--muted);font-size:14px;line-height:1.5;margin:6px 0 16px;}
+  .badge{
+    width:80px;height:80px;margin:0 auto 6px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 30%,#f6ad55,#dd6b20);
+    display:flex;align-items:center;justify-content:center;
+    font-size:38px;
+    box-shadow:0 0 30px rgba(246,173,85,.5);
+    animation:bounce 1.2s ease infinite;
+  }
+  @keyframes bounce{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+
+  /* ===== SCREENS ===== */
+  .screen{display:none;flex:1;}
+  .screen.active{display:block;animation:pop .3s ease;}
+
+  /* ===== LEADERBOARD / PROFILE ===== */
+  .panel{
+    background:var(--card);
+    border:1px solid #2a3566;
+    border-radius:18px;
+    padding:16px;
+    margin-bottom:14px;
+  }
+  .panel h3{margin:0 0 10px;font-size:15px;}
+  .rowItem{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 0;
+    border-bottom:1px solid #222c55;
+    font-size:14px;
+  }
+  .rowItem:last-child{border-bottom:none;}
+  .rowItem .l{color:var(--muted);}
+  .rowItem .r{font-weight:700;color:var(--accent);}
+  .levelCard{
+    text-align:center;
+    padding:18px;
+  }
+  .levelRing{
+    width:110px;height:110px;margin:0 auto 10px;
+    border-radius:50%;
+    background:conic-gradient(var(--accent) 0deg, var(--accent2) 360deg);
+    display:flex;align-items:center;justify-content:center;
+    position:relative;
+  }
+  .levelRing::after{
+    content:'';position:absolute;inset:8px;border-radius:50%;
+    background:#141b3a;
+  }
+  .levelRing span{position:relative;z-index:1;font-size:30px;font-weight:900;color:var(--accent);}
+  .levelCard .lvName{font-size:18px;font-weight:800;margin:4px 0;}
+  .levelCard .lvDesc{font-size:12px;color:var(--muted);}
+
+  .smallBtn{
+    background:#1d2750;border:1px solid #2a3566;color:var(--text);
+    padding:10px 14px;border-radius:12px;font-size:13px;font-weight:700;
+    cursor:pointer;
+  }
+  .smallBtn:active{transform:scale(.97);}
+  .danger{color:var(--accent3);border-color:rgba(252,129,129,.4);}
+
+  /* ===== STREAK PILL ===== */
+  .pill{
+    display:inline-flex;align-items:center;gap:5px;
+    font-size:12px;font-weight:700;
+    padding:4px 10px;border-radius:20px;
+    background:rgba(246,173,85,.15);
+    color:var(--accent2);
+    border:1px solid rgba(246,173,85,.35);
+  }
+
+  .confetti{
+    position:fixed;top:-10px;
+    width:10px;height:10px;
+    z-index:200;pointer-events:none;
+    border-radius:2px;
+  }
+  @keyframes fall{
+    to{transform:translateY(110vh) rotate(720deg);opacity:0;}
+  }
+
+  .topicList{display:flex;flex-direction:column;gap:10px;}
+  .topic{
+    display:flex;justify-content:space-between;align-items:center;
+    background:#0f1633;border:1.5px solid #2a3566;border-radius:14px;
+    padding:14px;cursor:pointer;transition:.18s;
+  }
+  .topic:active{transform:scale(.98);}
+  .topic.active{border-color:var(--accent);background:rgba(79,209,197,.1);}
+  .topic .tL{display:flex;align-items:center;gap:10px;}
+  .topic .ico{font-size:22px;}
+  .topic .tt{font-size:14px;font-weight:700;}
+  .topic .ts{font-size:11px;color:var(--muted);}
+  .topic .lock{font-size:16px;opacity:.6;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">Trigo<span>Quest</span></div>
+    <div class="stats">
+      <div class="stat" id="statLevel"><span class="ic">🏆</span><span id="levelNum">1</span></div>
+      <div class="stat" id="statXP"><span class="ic">⭐</span><span id="xpNum">0</span></div>
+    </div>
+  </header>
+
+  <!-- WEBGL VIEW -->
+  <div id="glWrap">
+    <span class="glLabel">Unit Circle 3D</span>
+    <span class="glHint">drag untuk putar ↻</span>
+  </div>
+
+  <!-- SCREEN: PLAY -->
+  <section class="screen active" id="screen-play">
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span id="topicName">Topik: Dasar Sudut</span>
+        <span id="progText">0/0</span>
+      </div>
+      <div class="bar"><div id="progBar"></div></div>
+    </div>
+
+    <div class="card" id="qCard">
+      <span class="tag" id="qTag">Soal</span>
+      <div class="question" id="qText">Memuat soal…</div>
+      <div class="hint" id="qHint"></div>
+      <div class="options" id="qOptions"></div>
+      <div class="feedback" id="qFeedback"></div>
+      <button class="btn" id="nextBtn">Lanjut →</button>
+    </div>
+  </section>
+
+  <!-- SCREEN: TOPICS -->
+  <section class="screen" id="screen-topics">
+    <div class="panel">
+      <h3>📚 Peta Petualangan</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 12px;line-height:1.5;">
+        Selesaikan setiap topik untuk membuka topik berikutnya. Kumpulkan XP untuk naik level!
+      </p>
+      <div class="topicList" id="topicList"></div>
+    </div>
+  </section>
+
+  <!-- SCREEN: PROFILE -->
+  <section class="screen" id="screen-profile">
+    <div class="panel levelCard">
+      <div class="levelRing"><span id="bigLevel">1</span></div>
+      <div class="lvName" id="lvName">Pemula Sudut</div>
+      <div class="lvDesc" id="lvDesc">Terus belajar untuk naik level!</div>
+      <div style="margin-top:12px;">
+        <span class="pill" id="streakPill">🔥 Streak 0</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>📊 Statistik</h3>
+      <div class="rowItem"><span class="l">Total XP</span><span class="r" id="pXP">0</span></div>
+      <div class="rowItem"><span class="l">Soal Benar</span><span class="r" id="pCorrect">0</span></div>
+      <div class="rowItem"><span class="l">Total Soal</span><span class="r" id="pTotal">0</span></div>
+      <div class="rowItem"><span class="l">Akurasi</span><span class="r" id="pAcc">0%</span></div>
+      <div class="rowItem"><span class="l">Topik Selesai</span><span class="r" id="pTopics">0/0</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>💾 Data & Reset</h3>
+      <p style="font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 12px;">
+        Progres disimpan otomatis di perangkat (localStorage dalam format JSON).
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="smallBtn" id="exportBtn">⬇ Ekspor JSON</button>
+        <button class="smallBtn danger" id="resetBtn">🗑 Reset Progres</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- NAV -->
+  <nav>
+    <button class="navBtn active" data-screen="play"><span class="ic">🎮</span>Main</button>
+    <button class="navBtn" data-screen="topics"><span class="ic">🗺️</span>Topik</button>
+    <button class="navBtn" data-screen="profile"><span class="ic">👤</span>Profil</button>
+  </nav>
+</div>
+
+<!-- LEVEL UP MODAL -->
+<div class="modal" id="modal">
+  <div class="modalBox">
+    <div class="badge" id="modalBadge">🏅</div>
+    <h2 id="modalTitle">Selamat!</h2>
+    <p id="modalDesc">Kamu naik level!</p>
+    <button class="btn show" id="modalBtn" style="background:linear-gradient(90deg,var(--accent2),#dd6b20);color:#2a1500;">Lanjut</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+/* =========================================================
+   TRIGOQUEST — Gamifikasi Trigonometri SMA
+   Data disimpan sebagai JSON di localStorage
+   ========================================================= */
+
+/* ---------- 1. DATA SOAL (BANK SOAL) ---------- */
+const TOPICS = [
+  {
+    id: "dasar",
+    name: "Dasar Sudut & Radian",
+    icon: "🧭",
+    desc: "Konversi derajat ↔ radian",
+    questions: [
+      {
+        q: "Konversi <span class='formula'>180°</span> ke radian adalah…",
+        hint: "Ingat: 180° = π radian",
+        options: ["π rad", "2π rad", "π/2 rad", "3π/2 rad"],
+        answer: 0,
+        explain: "180° = π radian. Jadi jawabannya π rad."
+      },
+      {
+        q: "Nilai <span class='formula'>π/3</span> radian sama dengan…",
+        hint: "π rad = 180°, maka π/3 = 180°/3",
+        options: ["30°", "45°", "60°", "90°"],
+        answer: 2,
+        explain: "π/3 = 180°/3 = 60°."
+      },
+      {
+        q: "Sudut <span class='formula'>270°</span> dalam radian adalah…",
+        hint: "270° = 3 × 90°, dan 90° = π/2",
+        options: ["π/2", "π", "3π/2", "2π"],
+        answer: 2,
+        explain: "270° = 270 × (π/180) = 3π/2 rad."
+      },
+      {
+        q: "Bentuk <span class='formula'>5π/4</span> radian setara dengan…",
+        hint: "5π/4 = 5 × 45°",
+        options: ["135°", "225°", "315°", "180°"],
+        answer: 1,
+        explain: "5π/4 × 180/π = 225°."
+      }
+    ]
+  },
+  {
+    id: "rasio",
+    name: "Rasio Trigonometri",
+    icon: "📐",
+    desc: "sin, cos, tan pada segitiga",
+    questions: [
+      {
+        q: "Pada segitiga siku-siku, <span class='formula'>sin θ</span> didefinisikan sebagai…",
+        hint: "Ingat SOH-CAH-TOA",
+        options: ["samping/miring", "depan/miring", "depan/samping", "miring/depan"],
+        answer: 1,
+        explain: "sin θ = sisi depan / sisi miring (SOH)."
+      },
+      {
+        q: "Jika <span class='formula'>sin θ = 3/5</span>, maka <span class='formula'>cos θ</span> (sudut lancip) adalah…",
+        hint: "Gunakan identitas sin²θ + cos²θ = 1",
+        options: ["4/5", "3/4", "5/4", "2/5"],
+        answer: 0,
+        explain: "cos²θ = 1 − (3/5)² = 16/25, jadi cos θ = 4/5."
+      },
+      {
+        q: "Nilai <span class='formula'>tan 45°</span> adalah…",
+        hint: "tan 45° = sin 45° / cos 45°",
+        options: ["0", "1/2", "1", "√3"],
+        answer: 2,
+        explain: "sin 45° = cos 45° = √2/2, sehingga tan 45° = 1."
+      },
+      {
+        q: "Diketahui segitiga siku-siku dengan sisi depan 6 dan sisi samping 8. Nilai <span class='formula'>tan θ</span> adalah…",
+        hint: "tan = depan / samping",
+        options: ["6/8", "8/6", "6/10", "8/10"],
+        answer: 0,
+        explain: "tan θ = depan/samping = 6/8 = 3/4."
+      }
+    ]
+  },
+  {
+    id: "identitas",
+    name: "Identitas Trigonometri",
+    icon: "🔗",
+    desc: "sin²+cos²=1 dan turunannya",
+    questions: [
+      {
+        q: "Identitas dasar yang benar adalah…",
+        hint: "Teorema Pythagoras pada lingkaran satuan",
+        options: ["sin²θ − cos²θ = 1", "sin²θ + cos²θ = 1", "sin θ + cos θ = 1", "tan²θ + 1 = sin²θ"],
+        answer: 1,
+        explain: "sin²θ + cos²θ = 1 adalah identitas Pythagoras."
+      },
+      {
+        q: "Bentuk sederhana dari <span class='formula'>1 + tan²θ</span> adalah…",
+        hint: "Bagi sin²θ + cos²θ = 1 dengan cos²θ",
+        options: ["sec²θ", "csc²θ", "cot²θ", "cos²θ"],
+        answer: 0,
+        explain: "1 + tan²θ = sec²θ."
+      },
+      {
+        q: "Jika <span class='formula'>sin θ = 0,6</span>, maka <span class='formula'>sin²θ + cos²θ</span> = …",
+        hint: "Identitas selalu berlaku untuk semua θ",
+        options: ["0,36", "0,64", "1", "1,2"],
+        answer: 2,
+        explain: "Identitas sin²θ + cos²θ = 1 selalu benar."
+      },
+      {
+        q: "Bentuk <span class='formula'>sin θ · csc θ</span> sama dengan…",
+        hint: "csc θ = 1/sin θ",
+        options: ["0", "1", "sin²θ", "cos θ"],
+        answer: 1,
+        explain: "sin θ · (1/sin θ) = 1."
+      }
+    ]
+  },
+  {
+    id: "lingkaran",
+    name: "Lingkaran Satuan",
+    icon: "⭕",
+    desc: "Nilai sudut istimewa & kuadran",
+    questions: [
+      {
+        q: "Nilai <span class='formula'>sin 30°</span> adalah…",
+        hint: "Sudut istimewa di kuadran I",
+        options: ["1/2", "√2/2", "√3/2", "1"],
+        answer: 0,
+        explain: "sin 30° = 1/2."
+      },
+      {
+        q: "Nilai <span class='formula'>cos 60°</span> adalah…",
+        hint: "cos 60° = sin 30°",
+        options: ["1/2", "√3/2", "√2/2", "0"],
+        answer: 0,
+        explain: "cos 60° = 1/2."
+      },
+      {
+        q: "Pada kuadran II, nilai <span class='formula'>sin θ</span> bernilai…",
+        hint: "Ingat ASTC: All-Sin-Tan-Cos",
+        options: ["positif", "negatif", "nol", "tidak tentu"],
+        answer: 0,
+        explain: "Di kuadran II hanya sin (dan csc) yang positif."
+      },
+      {
+        q: "Nilai <span class='formula'>sin 150°</span> adalah…",
+        hint: "150° = 180° − 30°",
+        options: ["−1/2", "1/2", "√3/2", "−√3/2"],
+        answer: 1,
+        explain: "sin 150° = sin 30° = 1/2 (kuadran II, sin positif)."
+      }
+    ]
+  },
+  {
+    id: "grafik",
+    name: "Grafik & Persamaan",
+    icon: "📈",
+    desc: "Periode, amplitudo, persamaan sederhana",
+    questions: [
+      {
+        q: "Periode fungsi <span class='formula'>y = sin x</span> adalah…",
+        hint: "Satu putaran penuh lingkaran satuan",
+        options: ["π", "2π", "π/2", "4π"],
+        answer: 1,
+        explain: "Periode sin x dan cos x adalah 2π."
+      },
+      {
+        q: "Amplitudo dari <span class='formula'>y = 3 sin x</span> adalah…",
+        hint: "Koefisien di depan sin",
+        options: ["1", "2", "3", "6"],
+        answer: 2,
+        explain: "Amplitudo = |3| = 3."
+      },
+      {
+        q: "Penyelesaian <span class='formula'>sin x = 0</span> untuk 0 ≤ x ≤ 2π adalah…",
+        hint: "Di mana grafik sin memotong sumbu-x?",
+        options: ["x = 0, π", "x = π/2, 3π/2", "x = 0, π/2", "x = π, 2π"],
+        answer: 0,
+        explain: "sin x = 0 saat x = 0 dan x = π (dalam 0..2π)."
+      },
+      {
+        q: "Periode fungsi <span class='formula'>y = cos 2x</span> adalah…",
+        hint: "Periode = 2π / koefisien x",
+        options: ["2π", "π", "π/2", "4π"],
+        answer: 1,
+        explain: "Periode cos 2x = 2π/2 = π."
+      }
+    ]
+  }
+];
+
+/* ---------- 2. STATE & PENYIMPANAN JSON ---------- */
+const STORAGE_KEY = "trigoquest_v1";
+
+function defaultState(){
+  return {
+    xp: 0,
+    correct: 0,
+    total: 0,
+    streak: 0,
+    bestStreak: 0,
+    currentTopic: "dasar",
+    topicProgress: {},        // { topicId: { answered: n, correct: n, done: bool } }
+    lastPlayed: new Date().toISOString(),
+    history: []               // log jawaban
+  };
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultState(), parsed);
+  }catch(e){
+    console.warn("Gagal memuat state:", e);
+    return defaultState();
+  }
+}
+
+function saveState(){
+  state.lastPlayed = new Date().toISOString();
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+let state = loadState();
+
+// pastikan setiap topik punya entri progres
+TOPICS.forEach(t=>{
+  if(!state.topicProgress[t.id]){
+    state.topicProgress[t.id] = { answered:0, correct:0, done:false };
+  }
+});
+
+/* ---------- 3. LEVEL & XP ---------- */
+const LEVELS = [
+  { min:0,    name:"Pemula Sudut",     desc:"Mulai petualangan trigonometri!" },
+  { min:100,  name:"Penjelajah Rasio", desc:"Kamu makin paham sin, cos, tan." },
+  { min:250,  name:"Ahli Identitas",   desc:"Identitas trigonometri bukan tantangan." },
+  { min:450,  name:"Master Lingkaran", desc:"Lingkaran satuan sudah kamu kuasai." },
+  { min:700,  name:"Legenda Trigo",    desc:"Luar biasa! Kamu ahli trigonometri." }
+];
+
+function getLevelInfo(xp){
+  let lv = 0;
+  for(let i=0;i<LEVELS.length;i++){
+    if(xp >= LEVELS[i].min) lv = i;
+  }
+  const cur = LEVELS[lv];
+  const next = LEVELS[lv+1] || null;
+  return { level: lv+1, name: cur.name, desc: cur.desc, next };
+}
+
+function addXP(amount){
+  const before = getLevelInfo(state.xp).level;
+  state.xp += amount;
+  const after = getLevelInfo(state.xp).level;
+  if(after > before){
+    showModal(
+      "🏅",
+      "Naik Level!",
+      `Selamat! Kamu sekarang Level ${after} — ${getLevelInfo(state.xp).name}.`
+    );
+    burstConfetti(24);
+  }
+  updateHUD();
+  saveState();
+}
+
+/* ---------- 4. RENDER HUD ---------- */
+function updateHUD(){
+  const info = getLevelInfo(state.xp);
+  document.getElementById("levelNum").textContent = info.level;
+  document.getElementById("xpNum").textContent = state.xp;
+
+  const totalQ = TOPICS.reduce((a,t)=>a+t.questions.length,0);
+  const answered = TOPICS.reduce((a,t)=>a + (state.topicProgress[t.id].answered||0), 0);
+  document.getElementById("progText").textContent = `${answered}/${totalQ}`;
+  document.getElementById("progBar").style.width = (answered/totalQ*100)+"%";
+
+  // profil
+  document.getElementById("bigLevel").textContent = info.level;
+  document.getElementById("lvName").textContent = info.name;
+  document.getElementById("lvDesc").textContent = info.desc;
+  document.getElementById("pXP").textContent = state.xp;
+  document.getElementById("pCorrect").textContent = state.correct;
+  document.getElementById("pTotal").textContent = state.total;
+  document.getElementById("pAcc").textContent = state.total
+    ? Math.round(state.correct/state.total*100)+"%"
+    : "0%";
+  const doneTopics = TOPICS.filter(t=>state.topicProgress[t.id].done).length;
+  document.getElementById("pTopics").textContent = `${doneTopics}/${TOPICS.length}`;
+  document.getElementById("streakPill").textContent = `🔥 Streak ${state.streak}`;
+}
+
+/* ---------- 5. RENDER TOPIK ---------- */
+function renderTopics(){
+  const wrap = document.getElementById("topicList");
+  wrap.innerHTML = "";
+  TOPICS.forEach((t, idx)=>{
+    const p = state.topicProgress[t.id];
+    const prev = idx===0 ? true : state.topicProgress[TOPICS[idx-1].id].done;
+    const locked = !prev;
+    const el = document.createElement("div");
+    el.className = "topic" + (state.currentTopic===t.id ? " active":"");
+    el.innerHTML = `
+      <div class="tL">
+        <span class="ico">${t.icon}</span>
+        <div>
+          <div class="tt">${t.name}</div>
+          <div class="ts">${t.desc} • ${p.correct}/${t.questions.length} benar</div>
+        </div>
+      </div>
+      <div class="lock">${locked ? "🔒" : (p.done ? "✅" : "▶")}</div>
+    `;
+    if(!locked){
+      el.addEventListener("click", ()=>{
+        state.currentTopic = t.id;
+        saveState();
+        switchScreen("play");
+        loadQuestion();
+        renderTopics();
+      });
+    }else{
+      el.style.opacity = .5;
+    }
+    wrap.appendChild(el);
+  });
+}
+
+/* ---------- 6. LOGIKA SOAL ---------- */
+let currentQ = null;
+let currentTopic = null;
+let answered = false;
+
+function loadQuestion(){
+  const topic = TOPICS.find(t=>t.id===state.currentTopic) || TOPICS[0];
+  currentTopic = topic;
+  const p = state.topicProgress[topic.id];
+  const qIndex = p.answered % topic.questions.length;
+
+  // kalau topik sudah selesai, tetap bisa ulang dari awal
+  currentQ = topic.questions[qIndex];
+  answered = false;
+
+  document.getElementById("topicName").textContent = "Topik: " + topic.name;
+  document.getElementById("qTag").textContent = `${topic.icon} ${topic.name}`;
+  document.getElementById("qText").innerHTML = currentQ.q;
+  document.getElementById("qHint").textContent = "💡 " + currentQ.hint;
+
+  const optsWrap = document.getElementById("qOptions");
+  optsWrap.innerHTML = "";
+  const keys = ["A","B","C","D"];
+  currentQ.options.forEach((opt, i)=>{
+    const btn = document.createElement("div");
+    btn.className = "opt";
+    btn.innerHTML = `<span class="key">${keys[i]}</span><span>${opt}</span>`;
+    btn.addEventListener("click", ()=>selectAnswer(i, btn));
+    optsWrap.appendChild(btn);
+  });
+
+  const fb = document.getElementById("qFeedback");
+  fb.className = "feedback";
+  fb.innerHTML = "";
+  document.getElementById("nextBtn").className = "btn";
+  updateHUD();
+}
+
+function selectAnswer(idx, btn){
+  if(answered) return;
+  answered = true;
+  const correctIdx = currentQ.answer;
+  const allOpts = document.querySelectorAll(".opt");
+  allOpts.forEach(o=>o.style.pointerEvents="none");
+
+  state.total++;
+  const p = state.topicProgress[currentTopic.id];
+  p.answered++;
+
+  const fb = document.getElementById("qFeedback");
+
+  if(idx === correctIdx){
+    btn.classList.add("correct");
+    state.correct++;
+    p.correct++;
+    state.streak++;
+    if(state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+    const bonus = state.streak >= 3 ? 15 : 10;
+    addXP(bonus);
+    burstConfetti(10);
+
+    fb.className = "feedback ok show";
+    fb.innerHTML = `✅ <b>Benar!</b> +${bonus} XP<br>${currentQ.explain}`;
+  }else{
+    btn.classList.add("wrong");
+    allOpts[correctIdx].classList.add("correct");
+    state.streak = 0;
+
+    fb.className = "feedback no show";
+    fb.innerHTML = `❌ <b>Belum tepat.</b> Jawaban benar: <b>${currentQ.options[correctIdx]}</b><br>${currentQ.explain}`;
+  }
+
+  // tandai topik selesai bila semua soal sudah dijawab minimal sekali dengan benar semua
+  const done = p.answered >= currentTopic.questions.length && p.correct >= currentTopic.questions.length;
+  if(done) p.done = true;
+
+  // simpan history
+  state.history.push({
+    topic: currentTopic.id,
+    q: currentQ.q.replace(/<[^>]+>/g,""),
+    correct: idx===correctIdx,
+    t: new Date().toISOString()
+  });
+  if(state.history.length > 200) state.history.shift();
+
+  saveState();
+  updateHUD();
+  renderTopics();
+
+  document.getElementById("nextBtn").className = "btn show";
+}
+
+document.getElementById("nextBtn").addEventListener("click", ()=>{
+  loadQuestion();
+  document.getElementById("qCard").style.animation = "none";
+  void document.getElementById("qCard").offsetWidth;
+  document.getElementById("qCard").style.animation = "pop .35s ease";
+});
+
+/* ---------- 7. NAVIGASI ---------- */
+function switchScreen(id){
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.getElementById("screen-"+id).classList.add("active");
+  document.querySelectorAll(".navBtn").forEach(b=>{
+    b.classList.toggle("active", b.dataset.screen===id);
+  });
+  if(id==="topics") renderTopics();
+  if(id==="profile") updateHUD();
+}
+
+document.querySelectorAll(".navBtn").forEach(btn=>{
+  btn.addEventListener("click", ()=>switchScreen(btn.dataset.screen));
+});
+
+/* ---------- 8. MODAL ---------- */
+function showModal(badge, title, desc, cb){
+  document.getElementById("modalBadge").textContent = badge;
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalDesc").textContent = desc;
+  document.getElementById("modal").classList.add("show");
+  const btn = document.getElementById("modalBtn");
+  btn.onclick = ()=>{
+    document.getElementById("modal").classList.remove("show");
+    if(cb) cb();
+  };
+}
+
+/* ---------- 9. CONFETTI ---------- */
+function burstConfetti(n){
+  const colors = ["#4fd1c5","#f6ad55","#fc8181","#68d391","#f6e05e"];
+  for(let i=0;i<n;i++){
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random()*100 + "vw";
+    c.style.background = colors[Math.floor(Math.random()*colors.length)];
+    c.style.animation = `fall ${1.2 + Math.random()*1.2}s linear forwards`;
+    c.style.animationDelay = (Math.random()*0.3)+"s";
+    c.style.transform = `rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(c);
+    setTimeout(()=>c.remove(), 2600);
+  }
+}
+
+/* ---------- 10. EXPORT / RESET ---------- */
+document.getElementById("exportBtn").addEventListener("click", ()=>{
+  const dataStr = JSON.stringify(state, null, 2);
+  const blob = new Blob([dataStr], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "trigoquest-progress.json";
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+document.getElementById("resetBtn").addEventListener("click", ()=>{
+  if(confirm("Yakin ingin menghapus semua progres? Tindakan ini tidak bisa dibatalkan.")){
+    localStorage.removeItem(STORAGE_KEY);
+    state = defaultState();
+    TOPICS.forEach(t=>{
+      state.topicProgress[t.id] = { answered:0, correct:0, done:false };
+    });
+    saveState();
+    updateHUD();
+    renderTopics();
+    loadQuestion();
+    showModal("🗑","Reset Berhasil","Progres kamu telah dihapus. Ayo mulai lagi dari awal!","Lanjut");
+  }
+});
+
+/* =========================================================
+   11. WEBGL — Lingkaran Satuan 3D dengan Three.js
+   ========================================================= */
+(function initWebGL(){
+  const wrap = document.getElementById("glWrap");
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(50, wrap.clientWidth/wrap.clientHeight, 0.1, 100);
+  camera.position.set(0, 1.6, 3.2);
+  camera.lookAt(0, 0, 0);
+
+  const renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(wrap.clientWidth, wrap.clientHeight);
+  wrap.appendChild(renderer.domElement);
+
+  // Cahaya
+  const ambient = new THREE.AmbientLight(0x8899ff, 1.2);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight(0x4fd1c5, 1.2);
+  dir.position.set(2,3,4);
+  scene.add(dir);
+  const dir2 = new THREE.DirectionalLight(0xf6ad55, 0.8);
+  dir2.position.set(-3,-2,1);
+  scene.add(dir2);
+
+  // Grup utama
+  const group = new THREE.Group();
+  scene.add(group);
+
+  // Lingkaran satuan
+  const circleGeo = new THREE.RingGeometry(0.99, 1.0, 96);
+  const circleMat = new THREE.MeshBasicMaterial({color:0x4fd1c5, side:THREE.DoubleSide, transparent:true, opacity:0.9});
+  const circle = new THREE.Mesh(circleGeo, circleMat);
+  group.add(circle);
+
+  // Grid bidang
+  const grid = new THREE.GridHelper(4, 20, 0x2a3566, 0x1a2244);
+  grid.position.y = -0.01;
+  group.add(grid);
+
+  // Sumbu X dan Y
+  const axisMat = new THREE.LineBasicMaterial({color:0x93a0c8});
+  const xGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-1.5,0,0), new THREE.Vector3(1.5,0,0)]);
+  const yGeo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,-1.5,0), new THREE.Vector3(0,1.5,0)]);
+  group.add(new THREE.Line(xGeo, axisMat));
+  group.add(new THREE.Line(yGeo, axisMat));
+
+  // Titik-titik sudut istimewa
+  const specialAngles = [0, 30, 45, 60, 90, 120, 135, 150, 180, 210, 225, 240, 270, 300, 315, 330];
+  const dotMat = new THREE.MeshBasicMaterial({color:0xf6ad55});
+  const dotGeo = new THREE.SphereGeometry(0.035, 12, 12);
+  specialAngles.forEach(a=>{
+    const rad = a * Math.PI/180;
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(Math.cos(rad), Math.sin(rad), 0.01);
+    group.add(dot);
+  });
+
+  // Vektor radius yang berputar (sinar)
+  const radiusGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0.02),
+    new THREE.Vector3(1,0,0.02)
+  ]);
+  const radiusMat = new THREE.LineBasicMaterial({color:0xfc8181, linewidth:2});
+  const radiusLine = new THREE.Line(radiusGeo, radiusMat);
+  group.add(radiusLine);
+
+  // Titik bergerak di ujung radius
+  const pointMat = new THREE.MeshBasicMaterial({color:0xfc8181});
+  const pointGeo = new THREE.SphereGeometry(0.06, 16, 16);
+  const pointMesh = new THREE.Mesh(pointGeo, pointMat);
+  group.add(pointMesh);
+
+  // Proyeksi sin & cos (garis putus-putus)
+  const projSinMat = new THREE.LineDashedMaterial({color:0x4fd1c5, dashSize:0.08, gapSize:0.06});
+  const projCosMat = new THREE.LineDashedMaterial({color:0xf6ad55, dashSize:0.08, gapSize:0.06});
+
+  const projSin = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(0,1,0)
+  ]), projSinMat);
+  const projCos = new THREE.Line(new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0,0,0), new THREE.Vector3(1,0,0)
+  ]), projCosMat);
+  group.add(projSin);
+  group.add(projCos);
+
+  // Interaksi drag
+  let isDown = false, prevX=0, prevY=0;
+  let rotY = 0, rotX = -0.15;
+  group.rotation.x = rotX;
+  group.rotation.y = rotY;
+
+  wrap.addEventListener("pointerdown", e=>{
+    isDown = true; prevX = e.clientX; prevY = e.clientY;
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener("pointermove", e=>{
+    if(!isDown) return;
+    const dx = e.clientX - prevX;
+    const dy = e.clientY - prevY;
+    rotY += dx * 0.01;
+    rotX = Math.max(-0.8, Math.min(0.8, rotX + dy*0.005));
+    prevX = e.clientX; prevY = e.clientY;
+  });
+  wrap.addEventListener("pointerup", ()=>{ isDown=false; });
+  wrap.addEventListener("pointercancel", ()=>{ isDown=false; });
+
+  // Animasi
+  let t = 0;
+  function animate(){
+    requestAnimationFrame(animate);
+    t += 0.012;
+
+    // sudut berputar
+    const ang = t % (Math.PI*2);
+    const x = Math.cos(ang);
+    const y = Math.sin(ang);
+
+    // update vektor radius
+    radiusLine.geometry.setFromPoints([
+      new THREE.Vector3(0,0,0.02),
+      new THREE.Vector3(x,y,0.02)
+    ]);
+    pointMesh.position.set(x,y,0.03);
+
+    // update proyeksi
+    projSin.geometry.setFromPoints([new THREE.Vector3(0,0,0.01), new THREE.Vector3(0,y,0.01)]);
+    projSin.computeLineDistances();
+    projCos.geometry.setFromPoints([new THREE.Vector3(0,0,0.01), new THREE.Vector3(x,0,0.01)]);
+    projCos.computeLineDistances();
+
+    // rotasi grup sedikit otomatis + damping dari interaksi
+    if(!isDown){
+      rotY += 0.002;
+    }
+    group.rotation.y += (rotY - group.rotation.y) * 0.1;
+    group.rotation.x += (rotX - group.rotation.x) * 0.1;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  // resize
+  window.addEventListener("resize", ()=>{
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    camera.aspect = w/h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w,h);
+  });
+})();
+
+/* ---------- 12. INIT ---------- */
+updateHUD();
+renderTopics();
+loadQuestion();
+</script>
+<!-- ============ EDUQUEST SYNC ADAPTER ============ -->
+<script src="eduquest.js"></script>
+<script>
+(function(){
+  if (typeof EduQuest === 'undefined') return;
+  const slug = EduQuest.getCurrentSlug();
+  if (!slug) return;
+
+  const LEGACY_KEY = "trigoquest_v1";
+
+  function syncMath() {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(LEGACY_KEY) || "{}"); }
+    catch(e) { raw = {}; }
+
+    // Data math sudah sangat cocok dengan EduQuest:
+    //   raw.xp      → xp
+    //   raw.correct → jumlah jawaban benar → kita pakai untuk badges
+    //   raw.total   → total soal dijawab  → plays (dibagi 4 soal per sesi)
+    const xp      = Number(raw.xp || 0);
+    const correct = Number(raw.correct || 0);
+    const total   = Number(raw.total || 0);
+    const streak  = Number(raw.streak || 0);
+
+    // "plays" = berapa topik yang pernah dimainkan (minimal 1 jawaban)
+    const plays = raw.topicProgress
+      ? Object.values(raw.topicProgress).filter(t => (t.answered||0) > 0).length
+      : 0;
+
+    // Badges: topik yang sudah selesai (done)
+    const badges = raw.topicProgress
+      ? Object.entries(raw.topicProgress)
+          .filter(([k,v]) => v && v.done)
+          .map(([k]) => 'topic_' + k)
+      : [];
+
+    // Score history: pakai history jawaban
+    const scores = Array.isArray(raw.history)
+      ? raw.history.slice(-20).map(h => ({
+          score: h.correct ? 1 : 0,
+          at: h.t || new Date().toISOString()
+        }))
+      : [];
+
+    EduQuest.saveSubjectData('math', {
+      xp: xp,
+      coins: Math.floor(xp / 10),
+      plays: plays,
+      lastPlayed: raw.lastPlayed || new Date().toISOString(),
+      badges: badges,
+      scores: scores,
+      // info tambahan (opsional, tidak dipakai dashboard utama)
+      meta: {
+        correct: correct,
+        total: total,
+        streak: streak,
+        accuracy: total ? Math.round(correct/total*100) : 0
+      }
+    });
+  }
+
+  syncMath();
+
+  let lastRaw = localStorage.getItem(LEGACY_KEY);
+  setInterval(() => {
+    const now = localStorage.getItem(LEGACY_KEY);
+    if (now !== lastRaw) { lastRaw = now; syncMath(); }
+  }, 2000);
+
+  window.addEventListener('beforeunload', syncMath);
+  window.addEventListener('pagehide', syncMath);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) syncMath();
+  });
+})();
+</script>
+</body>
+</html>

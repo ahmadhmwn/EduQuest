@@ -1,0 +1,1566 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fisika Open World - Simulasi GLB, GLBB, GJB</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; user-select:none; }
+  html,body { height:100%; overflow:hidden; font-family:'Segoe UI',system-ui,sans-serif; background:#0a0e17; color:#fff; }
+  #app { position:relative; width:100vw; height:100vh; overflow:hidden; touch-action:none; }
+  canvas { display:block; }
+
+  /* ===== HUD ===== */
+  #hud {
+    position:absolute; top:0; left:0; right:0; padding:8px 10px;
+    display:flex; justify-content:space-between; align-items:flex-start;
+    pointer-events:none; z-index:10; gap:6px;
+  }
+  .hud-box {
+    background:rgba(10,20,40,.85); border:1px solid #1e88e5; border-radius:10px;
+    padding:6px 10px; font-size:11px; line-height:1.5;
+    backdrop-filter:blur(8px);
+  }
+  .hud-box b { color:#64ffda; }
+  #locationBox { font-size:11px; }
+  #locationBox .loc { color:#64ffda; font-weight:bold; }
+
+  /* ===== Joystick ===== */
+  #joyZone {
+    position:absolute; bottom:0; left:0; width:55%; height:48%;
+    z-index:20; touch-action:none;
+  }
+  #joyBase, #joyKnob {
+    position:absolute; border-radius:50%; pointer-events:none;
+    transform:translate(-50%,-50%); opacity:0; transition:opacity .12s;
+    left:0; top:0;
+  }
+  #joyBase { width:110px; height:110px; border:2px solid rgba(100,255,218,.5); background:rgba(100,255,218,.08); }
+  #joyKnob { width:46px; height:46px; background:rgba(100,255,218,.6); box-shadow:0 0 15px #64ffda; }
+
+  /* ===== Buttons ===== */
+  .btn {
+    position:absolute; z-index:25; border:none; border-radius:50%;
+    width:62px; height:62px; font-size:24px; color:#fff; font-weight:bold;
+    touch-action:none; transition:transform .1s;
+    display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(145deg,#1e88e5,#0d47a1);
+    box-shadow:0 4px 15px rgba(30,136,229,.5);
+  }
+  .btn:active { transform:scale(.9); }
+  #btnAction { right:20px; bottom:130px; background:linear-gradient(145deg,#ffb300,#e65100); box-shadow:0 4px 15px rgba(255,179,0,.5); font-size:20px; }
+  #btnAction.hidden { display:none; }
+
+  /* ===== Minimap ===== */
+  #minimap {
+    position:absolute; bottom:12px; left:12px; z-index:15;
+    width:96px; height:96px; border-radius:10px;
+    border:1px solid rgba(100,255,218,.4); background:rgba(5,10,20,.7);
+    pointer-events:none;
+  }
+
+  /* ===== Hint ===== */
+  #hint {
+    position:absolute; bottom:118px; left:50%; transform:translateX(-50%);
+    z-index:18; background:rgba(15,25,45,.92); border:1px solid #ffd54f;
+    padding:6px 14px; border-radius:20px; font-size:11px; color:#ffd54f;
+    opacity:0; transition:opacity .25s; pointer-events:none; white-space:nowrap;
+  }
+  #hint.show { opacity:1; }
+
+  /* ===== Toast ===== */
+  #toast {
+    position:absolute; top:80px; left:50%; transform:translateX(-50%) translateY(-20px);
+    z-index:60; background:linear-gradient(145deg,#ffb300,#e65100);
+    padding:10px 18px; border-radius:30px; font-size:13px; font-weight:bold;
+    opacity:0; transition:all .35s; pointer-events:none; white-space:nowrap;
+    box-shadow:0 0 25px rgba(255,179,0,.6); color:#fff;
+  }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+  /* ===== Modal ===== */
+  .modal {
+    position:absolute; inset:0; z-index:50; display:none;
+    align-items:center; justify-content:center; padding:12px;
+    background:rgba(3,6,14,.9); backdrop-filter:blur(3px);
+  }
+  .modal.show { display:flex; }
+  .card {
+    width:100%; max-width:440px; max-height:94vh; overflow-y:auto;
+    background:linear-gradient(160deg,#0d1830,#060c1a);
+    border:1px solid #1e88e5; border-radius:16px;
+    box-shadow:0 0 40px rgba(30,136,229,.35);
+    -webkit-overflow-scrolling:touch;
+  }
+  .card-head {
+    position:sticky; top:0; z-index:2;
+    background:linear-gradient(180deg,#0d1830,#0a1428);
+    padding:14px 16px 10px; border-bottom:1px solid rgba(30,136,229,.35);
+  }
+  .card-head h2 { font-size:17px; color:#64ffda; display:flex; align-items:center; gap:8px; }
+  .card-head p { font-size:11px; color:#90a4ae; margin-top:2px; }
+  .card-body { padding:14px 16px 16px; }
+  .card-body h3 { font-size:13px; margin:10px 0 6px; color:#ffd54f; }
+  .card-body p, .card-body li { font-size:12.5px; line-height:1.55; color:#cfd8dc; }
+  .card-body ul { padding-left:16px; }
+
+  .formula {
+    background:#05101f; border-left:3px solid #64ffda; border-radius:6px;
+    padding:8px 10px; margin:6px 0; font-family:monospace; font-size:12.5px;
+    color:#64ffda; line-height:1.7;
+  }
+  .tag {
+    display:inline-block; padding:2px 8px; border-radius:10px;
+    font-size:10px; font-weight:bold; margin-right:4px;
+  }
+  .tag.glb  { background:rgba(79,195,247,.2);  color:#4fc3f7; border:1px solid #4fc3f7; }
+  .tag.glbb { background:rgba(186,104,200,.2); color:#ba68c8; border:1px solid #ba68c8; }
+  .tag.gjb  { background:rgba(255,183,77,.2);  color:#ffb74d; border:1px solid #ffb74d; }
+
+  /* ===== Simulator ===== */
+  .sim-canvas-wrap {
+    position:relative; margin:10px 0; border-radius:10px; overflow:hidden;
+    border:1px solid #1e88e5; background:#020710;
+  }
+  #simCanvas { display:block; width:100%; height:220px; touch-action:none; }
+  #graphCanvas { display:block; width:100%; height:130px; touch-action:none; border-top:1px solid rgba(30,136,229,.3); }
+
+  .sim-controls {
+    display:flex; flex-direction:column; gap:10px; margin:10px 0;
+  }
+  .ctrl-row {
+    display:flex; align-items:center; gap:10px;
+    background:rgba(30,136,229,.08); padding:8px 12px; border-radius:10px;
+    border:1px solid rgba(30,136,229,.25);
+  }
+  .ctrl-row label {
+    font-size:11px; color:#90a4ae; min-width:70px;
+  }
+  .ctrl-row input[type=range] {
+    flex:1; -webkit-appearance:none; height:5px; border-radius:3px;
+    background:linear-gradient(90deg,#1e88e5,#64ffda); outline:none;
+  }
+  .ctrl-row input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
+    background:#64ffda; cursor:pointer; box-shadow:0 0 8px #64ffda;
+  }
+  .ctrl-row input[type=range]::-moz-range-thumb {
+    width:20px; height:20px; border-radius:50%; background:#64ffda;
+    border:none; cursor:pointer;
+  }
+  .ctrl-val {
+    min-width:58px; text-align:right; font-family:monospace; font-size:12px;
+    color:#64ffda; font-weight:bold;
+  }
+
+  .sim-actions {
+    display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:8px;
+  }
+  .sim-actions button {
+    padding:10px 6px; border:none; border-radius:8px; font-size:12px;
+    font-weight:bold; cursor:pointer;
+  }
+  .btn-play { background:linear-gradient(145deg,#00c853,#009624); color:#fff; }
+  .btn-pause { background:linear-gradient(145deg,#ff9800,#e65100); color:#fff; }
+  .btn-reset { background:linear-gradient(145deg,#455a64,#263238); color:#fff; }
+  .sim-actions button:active { transform:scale(.96); }
+
+  .readouts {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px;
+  }
+  .readout {
+    background:#05101f; border:1px solid #1e88e5; border-radius:8px;
+    padding:8px; text-align:center;
+  }
+  .readout .lbl { font-size:9.5px; color:#90a4ae; text-transform:uppercase; letter-spacing:.5px; }
+  .readout .val { font-size:14px; color:#64ffda; font-family:monospace; font-weight:bold; margin-top:2px; }
+
+  /* ===== Quiz ===== */
+  .quiz-q {
+    background:rgba(255,213,79,.08); border-left:3px solid #ffd54f;
+    padding:10px 12px; border-radius:6px; margin:10px 0;
+    font-size:12.5px; color:#ffe082; line-height:1.5;
+  }
+  .opt-btn {
+    width:100%; padding:12px; margin-top:6px; border:1px solid #1e88e5;
+    border-radius:8px; background:rgba(30,136,229,.1); color:#fff;
+    font-size:12.5px; text-align:left; cursor:pointer;
+    transition:all .15s;
+  }
+  .opt-btn:active { background:rgba(30,136,229,.3); }
+  .opt-btn.correct { background:rgba(0,200,83,.25); border-color:#00c853; }
+  .opt-btn.wrong { background:rgba(244,67,54,.25); border-color:#f44336; }
+
+  .num-input {
+    width:100%; padding:12px; margin:6px 0; border-radius:8px;
+    border:1px solid #37474f; background:#05101f; color:#fff;
+    font-size:15px; font-family:monospace; outline:none; text-align:center;
+  }
+  .num-input:focus { border-color:#64ffda; }
+
+  .act-btn {
+    width:100%; padding:12px; margin-top:10px; border:none; border-radius:10px;
+    background:linear-gradient(145deg,#00c853,#009624); color:#fff;
+    font-size:14px; font-weight:bold; cursor:pointer;
+  }
+  .act-btn:active { transform:scale(.97); }
+  .ghost-btn {
+    width:100%; padding:10px; margin-top:8px; border:1px solid #37474f;
+    border-radius:10px; background:transparent; color:#90a4ae; font-size:12px;
+    cursor:pointer;
+  }
+
+  .result {
+    margin-top:10px; padding:10px 12px; border-radius:8px;
+    font-size:12.5px; display:none; line-height:1.5;
+  }
+  .result.ok  { display:block; background:rgba(0,200,83,.15);  border:1px solid #00c853; color:#69f0ae; }
+  .result.bad { display:block; background:rgba(244,67,54,.15); border:1px solid #f44336; color:#ff8a80; }
+
+  /* ===== Loading ===== */
+  #loading {
+    position:absolute; inset:0; z-index:100; background:#0a0e17;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition:opacity .4s;
+  }
+  #loading h1 { font-size:22px; color:#64ffda; margin-bottom:6px; letter-spacing:3px; }
+  #loading p { font-size:12px; color:#78909c; margin-bottom:22px; }
+  .loader { width:44px; height:44px; border:4px solid #1e88e5; border-top-color:#64ffda; border-radius:50%; animation:spin 1s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  @media (max-height:600px) {
+    #simCanvas { height:160px; }
+    #graphCanvas { height:100px; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="cv"></canvas>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-box">
+      <div>⭐ Skor: <b id="hudScore">0</b></div>
+      <div>🎯 Level: <b id="hudLevel">1</b></div>
+      <div>📊 Misi: <b id="hudProgress">0/10</b></div>
+    </div>
+    <div class="hud-box" id="locationBox">
+      <div class="loc" id="hudZone">🌍 Dunia Terbuka</div>
+      <div style="font-size:9.5px;color:#90a4ae;margin-top:2px;">Dekati arena simulasi</div>
+    </div>
+  </div>
+
+  <!-- Hints -->
+  <div id="hint">Dekati arena untuk simulasi</div>
+
+  <!-- Joystick -->
+  <div id="joyZone">
+    <div id="joyBase"></div>
+    <div id="joyKnob"></div>
+  </div>
+
+  <!-- Action Button -->
+  <button class="btn hidden" id="btnAction">🔬</button>
+
+  <!-- Minimap -->
+  <canvas id="minimap"></canvas>
+
+  <!-- Toast -->
+  <div id="toast"></div>
+
+  <!-- Modal -->
+  <div class="modal" id="modal">
+    <div class="card" id="modalCard"></div>
+  </div>
+
+  <!-- Loading -->
+  <div id="loading">
+    <h1>FISIKA WORLD</h1>
+    <p>Simulasi GLB • GLBB • GJB</p>
+    <div class="loader"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   FISIKA OPEN WORLD — SIMULASI INTERAKTIF
+   ============================================================ */
+
+/* ========== 1. STORAGE (JSON) ========== */
+const STORAGE_KEY = 'fisikaWorldSim_v1';
+
+const DEFAULT_STATE = {
+  player: { x: 400, y: 400, speed: 220, facing: 1, anim: 0 },
+  camera: { x: 0, y: 0 },
+  score: 0,
+  level: 1,
+  completed: [],   // id misi yg selesai
+  simParams: {     // parameter terakhir tiap arena
+    glb:  { v: 5, t: 10 },
+    glbb: { v0: 0, a: 2, t: 5 },
+    gjb:  { h: 20, g: 10 }
+  },
+  timestamp: Date.now()
+};
+
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return clone(DEFAULT_STATE);
+    const p = JSON.parse(raw);
+    const base = clone(DEFAULT_STATE);
+    return {
+      ...base, ...p,
+      player: { ...base.player, ...(p.player||{}) },
+      camera: { ...base.camera, ...(p.camera||{}) },
+      simParams: { ...base.simParams, ...(p.simParams||{}) },
+      completed: Array.isArray(p.completed) ? p.completed : []
+    };
+  } catch(e) {
+    console.warn('load error', e);
+    return clone(DEFAULT_STATE);
+  }
+}
+
+function saveState() {
+  state.timestamp = Date.now();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ console.warn('save error', e); }
+}
+
+let state = loadState();
+
+/* ========== 2. WORLD DATA ========== */
+const WORLD = {
+  width: 2200,
+  height: 1800,
+  zones: [
+    { id:'glb',  name:'ZONA GLB',  sub:'Kecepatan Konstan',
+      x:120,  y:120,  w:750, h:650, color:'#0d3b66', accent:'#4fc3f7' },
+    { id:'glbb', name:'ZONA GLBB', sub:'Percepatan Konstan',
+      x:1330, y:120,  w:750, h:650, color:'#3b0d5e', accent:'#ba68c8' },
+    { id:'gjb',  name:'ZONA GJB',  sub:'Jatuh Bebas',
+      x:120,  y:1000, w:750, h:650, color:'#5e2d0d', accent:'#ffb74d' },
+    { id:'ujian',name:'ZONA UJIAN', sub:'Uji Pemahaman',
+      x:1330, y:1000, w:750, h:650, color:'#0d5e3b', accent:'#81c784' }
+  ],
+  arenas: [
+    // GLB — 3 arena
+    { id:'arena_glb_1', zone:'glb', kind:'glb', x:280, y:280,
+      icon:'🚗', title:'Arena GLB — Mobil Konstan' },
+    { id:'arena_glb_2', zone:'glb', kind:'glb', x:620, y:280,
+      icon:'🚴', title:'Arena GLB — Sepeda Konstan' },
+    { id:'arena_glb_3', zone:'glb', kind:'glb', x:450, y:560,
+      icon:'🏃', title:'Arena GLB — Pelari Konstan' },
+
+    // GLBB — 3 arena
+    { id:'arena_glbb_1', zone:'glbb', kind:'glbb', x:1500, y:280,
+      icon:'🚀', title:'Arena GLBB — Roket Dipercepat' },
+    { id:'arena_glbb_2', zone:'glbb', kind:'glbb', x:1830, y:280,
+      icon:'🏎️', title:'Arena GLBB — Balap Dipercepat' },
+    { id:'arena_glbb_3', zone:'glbb', kind:'glbb', x:1660, y:560,
+      icon:'🛴', title:'Arena GLBB — Skuter Dipercepat' },
+
+    // GJB — 3 arena
+    { id:'arena_gjb_1', zone:'gjb', kind:'gjb', x:280, y:1160,
+      icon:'🍎', title:'Arena GJB — Apel Jatuh' },
+    { id:'arena_gjb_2', zone:'gjb', kind:'gjb', x:620, y:1160,
+      icon:'🪂', title:'Arena GJB — Penerjun' },
+    { id:'arena_gjb_3', zone:'gjb', kind:'gjb', x:450, y:1440,
+      icon:'⚽', title:'Arena GJB — Bola Jatuh' },
+
+    // UJIAN
+    { id:'arena_ujian_1', zone:'ujian', kind:'ujian', x:1700, y:1320,
+      icon:'🎓', title:'Ujian Akhir Fisika' }
+  ]
+};
+
+/* ========== 3. KUIS / TANTANGAN ========== */
+const CHALLENGE = {
+  arena_glb_1: {
+    intro:'Amati mobil yang bergerak dengan kecepatan konstan.',
+    task:'Setelah bereksperimen, jawab: jika v = 8 m/s dan t = 6 s, berapa jarak tempuh?',
+    formula:'s = v × t', answer:48, unit:'m',
+    explain:'Jarak = kecepatan × waktu = 8 × 6 = 48 m'
+  },
+  arena_glb_2: {
+    intro:'Sepeda melintas dengan kecepatan konstan.',
+    task:'Jika jarak 150 m ditempuh dalam 30 s (GLB), berapa kecepatannya?',
+    formula:'v = s / t', answer:5, unit:'m/s',
+    explain:'v = 150 / 30 = 5 m/s'
+  },
+  arena_glb_3: {
+    intro:'Pelari dengan kecepatan konstan.',
+    task:'v = 6 m/s, s = 90 m. Berapa waktu yang dibutuhkan?',
+    formula:'t = s / v', answer:15, unit:'s',
+    explain:'t = 90 / 6 = 15 s'
+  },
+  arena_glbb_1: {
+    intro:'Roket dipercepat dari keadaan diam.',
+    task:'Dari v₀ = 0, a = 5 m/s², t = 4 s. Berapa kecepatan akhir?',
+    formula:'v = v₀ + a·t', answer:20, unit:'m/s',
+    explain:'v = 0 + 5 × 4 = 20 m/s'
+  },
+  arena_glbb_2: {
+    intro:'Mobil balap dipercepat secara konstan.',
+    task:'v₀ = 2 m/s, a = 3 m/s², t = 4 s. Berapa jarak yang ditempuh?',
+    formula:'s = v₀·t + ½·a·t²', answer:32, unit:'m',
+    explain:'s = 2·4 + ½·3·16 = 8 + 24 = 32 m'
+  },
+  arena_glbb_3: {
+    intro:'Skuter dipercepat hingga menempuh jarak tertentu.',
+    task:'v₀ = 4 m/s, a = 2 m/s², s = 45 m. Berapa kecepatan akhir? (v²=v₀²+2as)',
+    formula:'v² = v₀² + 2·a·s', answer:14, unit:'m/s',
+    explain:'v² = 16 + 2·2·45 = 196 → v = 14 m/s'
+  },
+  arena_gjb_1: {
+    intro:'Apel jatuh bebas dari pohon.',
+    task:'Jatuh dari h = 20 m, g = 10 m/s². Berapa waktu jatuhnya?',
+    formula:'t = √(2h/g)', answer:2, unit:'s',
+    explain:'t = √(40/10) = √4 = 2 s'
+  },
+  arena_gjb_2: {
+    intro:'Penerjun jatuh bebas.',
+    task:'Jatuh selama t = 3 s, g = 10 m/s². Berapa ketinggian awalnya?',
+    formula:'h = ½·g·t²', answer:45, unit:'m',
+    explain:'h = ½ · 10 · 9 = 45 m'
+  },
+  arena_gjb_3: {
+    intro:'Bola jatuh dari ketinggian.',
+    task:'Jatuh dari h = 45 m, g = 10 m/s². Berapa kecepatan saat menyentuh tanah?',
+    formula:'v = √(2gh)', answer:30, unit:'m/s',
+    explain:'v = √(2·10·45) = √900 = 30 m/s'
+  },
+  arena_ujian_1: {
+    intro:'Buktikan pemahamanmu tentang GLB, GLBB, dan GJB.',
+    type:'kuis',
+    questions:[
+      { q:'Manakah ciri GLB?', options:['Percepatan konstan','Kecepatan konstan','Kecepatan nol','Ketinggian berubah'], answer:1 },
+      { q:'Rumus jarak GLBB?', options:['s = v·t','s = v₀·t + ½·a·t²','h = ½·g·t²','v = s/t'], answer:1 },
+      { q:'Pada GJB kecepatan awal benda adalah...', options:['Maksimum','Nol','Sama dengan g','Tidak tentu'], answer:1 }
+    ]
+  }
+};
+
+/* ========== 4. CANVAS UTAMA ========== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const mmCv = document.getElementById('minimap');
+const mmCtx = mmCv.getContext('2d');
+const MAP_SIZE = 96;
+
+let W = 0, H = 0, DPR = 1;
+
+function resizeMain() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  cv.width  = Math.floor(W * DPR);
+  cv.height = Math.floor(H * DPR);
+  cv.style.width  = W + 'px';
+  cv.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+  mmCv.width  = Math.floor(MAP_SIZE * DPR);
+  mmCv.height = Math.floor(MAP_SIZE * DPR);
+  mmCv.style.width  = MAP_SIZE + 'px';
+  mmCv.style.height = MAP_SIZE + 'px';
+  mmCtx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resizeMain);
+window.addEventListener('orientationchange', () => setTimeout(resizeMain, 200));
+
+/* ========== 5. INPUT ========== */
+const keys = { up:false, down:false, left:false, right:false };
+const joy = { active:false, dx:0, dy:0, baseX:0, baseY:0, id:null };
+
+window.addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k==='arrowup'||k==='w') keys.up = true;
+  if (k==='arrowdown'||k==='s') keys.down = true;
+  if (k==='arrowleft'||k==='a') keys.left = true;
+  if (k==='arrowright'||k==='d') keys.right = true;
+  if (k===' '||k==='enter') { e.preventDefault(); triggerAction(); }
+});
+window.addEventListener('keyup', e => {
+  const k = e.key.toLowerCase();
+  if (k==='arrowup'||k==='w') keys.up = false;
+  if (k==='arrowdown'||k==='s') keys.down = false;
+  if (k==='arrowleft'||k==='a') keys.left = false;
+  if (k==='arrowright'||k==='d') keys.right = false;
+});
+
+const joyZone = document.getElementById('joyZone');
+const joyBase = document.getElementById('joyBase');
+const joyKnob = document.getElementById('joyKnob');
+
+function joyStart(cx, cy) {
+  const r = joyZone.getBoundingClientRect();
+  joy.active = true;
+  joy.baseX = cx; joy.baseY = cy;
+  joy.dx = 0; joy.dy = 0;
+  joyBase.style.left = (cx - r.left) + 'px';
+  joyBase.style.top  = (cy - r.top) + 'px';
+  joyKnob.style.left = (cx - r.left) + 'px';
+  joyKnob.style.top  = (cy - r.top) + 'px';
+  joyBase.style.opacity = 1;
+  joyKnob.style.opacity = 1;
+}
+
+function joyMove(cx, cy) {
+  if (!joy.active) return;
+  const r = joyZone.getBoundingClientRect();
+  let dx = cx - joy.baseX, dy = cy - joy.baseY;
+  const d = Math.hypot(dx, dy);
+  const max = 45;
+  if (d > max) { dx = dx/d*max; dy = dy/d*max; }
+  joy.dx = dx/max;
+  joy.dy = dy/max;
+  joyKnob.style.left = (joy.baseX - r.left + dx) + 'px';
+  joyKnob.style.top  = (joy.baseY - r.top + dy) + 'px';
+}
+
+function joyEnd() {
+  joy.active = false; joy.dx = 0; joy.dy = 0; joy.id = null;
+  joyBase.style.opacity = 0;
+  joyKnob.style.opacity = 0;
+}
+
+joyZone.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joy.id = t.identifier;
+  joyStart(t.clientX, t.clientY);
+}, { passive:false });
+joyZone.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) joyMove(t.clientX, t.clientY);
+  }
+}, { passive:false });
+joyZone.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) joyEnd();
+  }
+});
+joyZone.addEventListener('touchcancel', joyEnd);
+
+joyZone.addEventListener('mousedown', e => { e.preventDefault(); joyStart(e.clientX, e.clientY); });
+window.addEventListener('mousemove', e => { if (joy.active) joyMove(e.clientX, e.clientY); });
+window.addEventListener('mouseup', () => { if (joy.active) joyEnd(); });
+
+const btnAction = document.getElementById('btnAction');
+btnAction.addEventListener('click', e => { e.preventDefault(); triggerAction(); });
+btnAction.addEventListener('touchstart', e => { e.preventDefault(); triggerAction(); }, { passive:false });
+
+/* ========== 6. GAME LOOP ========== */
+let lastTime = 0;
+let nearbyArena = null;
+let currentZone = null;
+let isPaused = false;
+let toastTimer = null;
+
+function loop(ts) {
+  if (!lastTime) lastTime = ts;
+  let dt = (ts - lastTime) / 1000;
+  lastTime = ts;
+  if (dt > 0.1) dt = 0.1;
+
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+function update(dt) {
+  const p = state.player;
+
+  // Zone detection
+  let z = null;
+  for (const zone of WORLD.zones) {
+    if (p.x >= zone.x && p.x <= zone.x + zone.w &&
+        p.y >= zone.y && p.y <= zone.y + zone.h) {
+      z = zone; break;
+    }
+  }
+  currentZone = z;
+  updateLocationHUD();
+
+  // Input
+  let ix = 0, iy = 0;
+  if (keys.left) ix -= 1;
+  if (keys.right) ix += 1;
+  if (keys.up) iy -= 1;
+  if (keys.down) iy += 1;
+  if (joy.active) { ix += joy.dx; iy += joy.dy; }
+  const m = Math.hypot(ix, iy);
+  if (m > 1) { ix /= m; iy /= m; }
+
+  if (ix !== 0 || iy !== 0) {
+    p.x += ix * p.speed * dt;
+    p.y += iy * p.speed * dt;
+    p.anim += dt * 8;
+    if (ix !== 0) p.facing = ix > 0 ? 1 : -1;
+  } else {
+    p.anim = 0;
+  }
+
+  p.x = Math.max(30, Math.min(WORLD.width - 30, p.x));
+  p.y = Math.max(30, Math.min(WORLD.height - 30, p.y));
+
+  // Cari arena terdekat
+  nearbyArena = null;
+  let best = 75;
+  for (const a of WORLD.arenas) {
+    if (state.completed.includes(a.id)) continue;
+    const d = Math.hypot(a.x - p.x, a.y - p.y);
+    if (d < best) { best = d; nearbyArena = a; }
+  }
+
+  // Camera
+  const cam = state.camera;
+  const tx = Math.max(0, Math.min(WORLD.width - W, p.x - W/2));
+  const ty = Math.max(0, Math.min(WORLD.height - H, p.y - H/2));
+  cam.x += (tx - cam.x) * Math.min(1, dt * 8);
+  cam.y += (ty - cam.y) * Math.min(1, dt * 8);
+
+  // Hint + Action button
+  const hint = document.getElementById('hint');
+  if (nearbyArena && !isPaused) {
+    hint.textContent = nearbyArena.icon + ' ' + nearbyArena.title;
+    hint.classList.add('show');
+    btnAction.classList.remove('hidden');
+  } else {
+    hint.classList.remove('show');
+    btnAction.classList.add('hidden');
+  }
+}
+
+function render() {
+  const cam = state.camera;
+  ctx.fillStyle = '#060a14';
+  ctx.fillRect(0, 0, W, H);
+
+  ctx.save();
+  ctx.translate(-cam.x, -cam.y);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(30,136,229,.08)';
+  ctx.lineWidth = 1;
+  const gs = 100;
+  const gx = Math.floor(cam.x/gs)*gs;
+  const gy = Math.floor(cam.y/gs)*gs;
+  ctx.beginPath();
+  for (let x=gx; x<cam.x+W+gs; x+=gs) { ctx.moveTo(x,cam.y); ctx.lineTo(x,cam.y+H); }
+  for (let y=gy; y<cam.y+H+gs; y+=gs) { ctx.moveTo(cam.x,y); ctx.lineTo(cam.x+W,y); }
+  ctx.stroke();
+
+  // Zones
+  for (const z of WORLD.zones) {
+    ctx.fillStyle = z.color + '55';
+    ctx.fillRect(z.x, z.y, z.w, z.h);
+    ctx.strokeStyle = z.accent;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(z.x, z.y, z.w, z.h);
+
+    ctx.save();
+    ctx.globalAlpha = 0.4;
+    ctx.fillStyle = z.accent;
+    ctx.font = 'bold 30px Segoe UI';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(z.name, z.x + 25, z.y + 25);
+    ctx.font = '14px Segoe UI';
+    ctx.globalAlpha = 0.6;
+    ctx.fillText(z.sub, z.x + 25, z.y + 62);
+    ctx.restore();
+  }
+
+  // Arenas
+  const t = performance.now() / 500;
+  for (const a of WORLD.arenas) {
+    const done = state.completed.includes(a.id);
+    const bob = Math.sin(t + a.x*0.01) * 2;
+    const color = a.kind==='glb' ? '#4fc3f7'
+                : a.kind==='glbb' ? '#ba68c8'
+                : a.kind==='gjb' ? '#ffb74d' : '#81c784';
+
+    // outer glow
+    if (!done) {
+      const r = 34 + Math.sin(t*1.3 + a.x)*3;
+      ctx.beginPath();
+      ctx.arc(a.x, a.y, r, 0, Math.PI*2);
+      ctx.fillStyle = color + '22';
+      ctx.fill();
+    }
+
+    // shadow
+    ctx.beginPath();
+    ctx.ellipse(a.x, a.y + 26, 20, 6, 0, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
+    ctx.fill();
+
+    // arena body
+    ctx.beginPath();
+    ctx.arc(a.x, a.y + bob, 26, 0, Math.PI*2);
+    ctx.fillStyle = done ? '#37474f' : color;
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+
+    // inner circle
+    ctx.beginPath();
+    ctx.arc(a.x, a.y + bob, 16, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,.5)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // icon
+    ctx.font = '22px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(a.icon, a.x, a.y + bob + 1);
+
+    // check
+    if (done) {
+      ctx.font = 'bold 18px Segoe UI';
+      ctx.fillStyle = '#64ffda';
+      ctx.fillText('✓', a.x + 20, a.y + bob - 20);
+    }
+  }
+
+  // Player
+  const p = state.player;
+  const bob = Math.abs(Math.sin(p.anim)) * 3;
+  const py = p.y - bob;
+
+  ctx.beginPath();
+  ctx.ellipse(p.x, p.y + 20, 14, 5, 0, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(0,0,0,.5)';
+  ctx.fill();
+
+  const grd = ctx.createRadialGradient(p.x-5, py-5, 2, p.x, py, 18);
+  grd.addColorStop(0, '#64ffda');
+  grd.addColorStop(1, '#00897b');
+  ctx.beginPath();
+  ctx.arc(p.x, py, 18, 0, Math.PI*2);
+  ctx.fillStyle = grd;
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // arrow facing
+  ctx.beginPath();
+  ctx.moveTo(p.x + 14*p.facing, py);
+  ctx.lineTo(p.x + 4*p.facing, py - 7);
+  ctx.lineTo(p.x + 4*p.facing, py + 7);
+  ctx.closePath();
+  ctx.fillStyle = '#fff';
+  ctx.fill();
+
+  // Interaction bubble
+  if (nearbyArena) {
+    const a = nearbyArena;
+    const bu = Math.sin(t*2)*2;
+    ctx.beginPath();
+    ctx.arc(a.x, a.y - 48 + bu, 16, 0, Math.PI*2);
+    ctx.fillStyle = 'rgba(255,179,0,.95)';
+    ctx.fill();
+    ctx.font = 'bold 20px Segoe UI';
+    ctx.fillStyle = '#000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔬', a.x, a.y - 47 + bu);
+  }
+
+  ctx.restore();
+  renderMinimap();
+}
+
+function renderMinimap() {
+  const s = MAP_SIZE / Math.max(WORLD.width, WORLD.height);
+  mmCtx.clearRect(0, 0, MAP_SIZE, MAP_SIZE);
+  mmCtx.fillStyle = 'rgba(5,10,20,.85)';
+  mmCtx.fillRect(0, 0, MAP_SIZE, MAP_SIZE);
+
+  for (const z of WORLD.zones) {
+    mmCtx.fillStyle = z.accent + '44';
+    mmCtx.fillRect(z.x*s, z.y*s, z.w*s, z.h*s);
+    mmCtx.strokeStyle = z.accent + '88';
+    mmCtx.lineWidth = 1;
+    mmCtx.strokeRect(z.x*s, z.y*s, z.w*s, z.h*s);
+  }
+  for (const a of WORLD.arenas) {
+    const done = state.completed.includes(a.id);
+    mmCtx.fillStyle = done ? '#546e7a' : (
+      a.kind==='glb' ? '#4fc3f7' :
+      a.kind==='glbb' ? '#ba68c8' :
+      a.kind==='gjb' ? '#ffb74d' : '#81c784');
+    mmCtx.beginPath();
+    mmCtx.arc(a.x*s, a.y*s, 3, 0, Math.PI*2);
+    mmCtx.fill();
+  }
+  // player
+  mmCtx.fillStyle = '#64ffda';
+  mmCtx.beginPath();
+  mmCtx.arc(state.player.x*s, state.player.y*s, 4, 0, Math.PI*2);
+  mmCtx.fill();
+  mmCtx.strokeStyle = '#fff';
+  mmCtx.lineWidth = 1;
+  mmCtx.stroke();
+}
+
+/* ========== 7. HUD HELPERS ========== */
+function updateLocationHUD() {
+  const el = document.getElementById('hudZone');
+  if (currentZone) {
+    el.textContent = '📍 ' + currentZone.name;
+  } else {
+    el.textContent = '🌍 Dunia Terbuka';
+  }
+}
+
+function updateHUD() {
+  document.getElementById('hudScore').textContent = state.score;
+  document.getElementById('hudLevel').textContent = state.level;
+  document.getElementById('hudProgress').textContent =
+    state.completed.length + '/' + WORLD.arenas.length;
+}
+
+function showToast(msg, ms=2000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+/* ========== 8. AKSI: BUKA SIMULATOR ========== */
+let activeSim = null;
+
+function triggerAction() {
+  if (isPaused || !nearbyArena) return;
+  openArena(nearbyArena);
+}
+
+function openArena(arena) {
+  isPaused = true;
+  const ch = CHALLENGE[arena.id];
+  const card = document.getElementById('modalCard');
+
+  const kind = arena.kind;
+  const tag = kind === 'ujian'
+    ? '<span class="tag glb">UJIAN</span>'
+    : `<span class="tag ${kind}">${kind.toUpperCase()}</span>`;
+
+  let html = `
+    <div class="card-head">
+      <h2>${arena.icon} ${arena.title}</h2>
+      <p>${tag} <span style="color:#90a4ae">Bereksperimen dulu, lalu jawab tantangan</span></p>
+    </div>
+    <div class="card-body">
+  `;
+
+  if (kind === 'ujian') {
+    html += buildUjianHTML(ch);
+  } else {
+    html += buildSimHTML(arena, ch);
+  }
+
+  html += `
+      <button class="ghost-btn" id="btnClose">✕ Tutup</button>
+    </div>
+  `;
+
+  card.innerHTML = html;
+  document.getElementById('modal').classList.add('show');
+  document.getElementById('btnClose').onclick = closeModal;
+
+  if (kind === 'ujian') {
+    bindUjian(arena, ch);
+  } else {
+    bindSim(arena, ch);
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('show');
+  if (activeSim) {
+    if (activeSim.raf) cancelAnimationFrame(activeSim.raf);
+    activeSim = null;
+  }
+  isPaused = false;
+}
+
+/* ========== 9. SIMULATOR HTML ========== */
+function buildSimHTML(arena, ch) {
+  const kind = arena.kind;
+  const params = state.simParams[kind] || {};
+
+  let sliders = '';
+  if (kind === 'glb') {
+    sliders = `
+      <div class="ctrl-row">
+        <label>Kecepatan v</label>
+        <input type="range" id="sl_v" min="1" max="20" step="1" value="${params.v||5}">
+        <span class="ctrl-val" id="val_v">${params.v||5} m/s</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Waktu t</label>
+        <input type="range" id="sl_t" min="1" max="20" step="1" value="${params.t||10}">
+        <span class="ctrl-val" id="val_t">${params.t||10} s</span>
+      </div>
+    `;
+  } else if (kind === 'glbb') {
+    sliders = `
+      <div class="ctrl-row">
+        <label>v₀ awal</label>
+        <input type="range" id="sl_v0" min="0" max="20" step="1" value="${params.v0||0}">
+        <span class="ctrl-val" id="val_v0">${params.v0||0} m/s</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Percepatan a</label>
+        <input type="range" id="sl_a" min="1" max="10" step="0.5" value="${params.a||2}">
+        <span class="ctrl-val" id="val_a">${params.a||2} m/s²</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Waktu t</label>
+        <input type="range" id="sl_t" min="1" max="15" step="1" value="${params.t||5}">
+        <span class="ctrl-val" id="val_t">${params.t||5} s</span>
+      </div>
+    `;
+  } else if (kind === 'gjb') {
+    sliders = `
+      <div class="ctrl-row">
+        <label>Ketinggian h</label>
+        <input type="range" id="sl_h" min="5" max="80" step="1" value="${params.h||20}">
+        <span class="ctrl-val" id="val_h">${params.h||20} m</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Gravitasi g</label>
+        <input type="range" id="sl_g" min="1" max="20" step="0.5" value="${params.g||10}">
+        <span class="ctrl-val" id="val_g">${params.g||10} m/s²</span>
+      </div>
+    `;
+  }
+
+  return `
+    <p style="font-size:12px;color:#90a4ae;margin-bottom:6px;">${ch.intro}</p>
+
+    <div class="sim-canvas-wrap">
+      <canvas id="simCanvas"></canvas>
+      <canvas id="graphCanvas"></canvas>
+    </div>
+
+    <div class="sim-controls">
+      ${sliders}
+    </div>
+
+    <div class="sim-actions">
+      <button class="btn-play" id="simPlay">▶ Mulai</button>
+      <button class="btn-pause" id="simPause">⏸ Jeda</button>
+      <button class="btn-reset" id="simReset">↻ Reset</button>
+    </div>
+
+    <div class="readouts">
+      <div class="readout"><div class="lbl">Waktu</div><div class="val" id="ro_t">0.00 s</div></div>
+      <div class="readout"><div class="lbl">Posisi</div><div class="val" id="ro_s">0.00 m</div></div>
+      <div class="readout"><div class="lbl">Kecepatan</div><div class="val" id="ro_v">0.00 m/s</div></div>
+    </div>
+
+    <h3>🎯 Tantangan</h3>
+    <div class="quiz-q">${ch.task}</div>
+    <div class="formula">${ch.formula}</div>
+    <input class="num-input" type="number" id="ansInput" placeholder="Jawaban (${ch.unit})" step="any" inputmode="decimal">
+    <button class="act-btn" id="btnSubmit">✅ Periksa Jawaban</button>
+    <div class="result" id="result"></div>
+  `;
+}
+
+/* ========== 10. SIMULATOR LOGIC ========== */
+function bindSim(arena, ch) {
+  const simCv = document.getElementById('simCanvas');
+  const graphCv = document.getElementById('graphCanvas');
+  const sctx = simCv.getContext('2d');
+  const gctx = graphCv.getContext('2d');
+
+  // Resize internal resolution
+  function fitCanvas(c, ctx2) {
+    const r = c.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    c.width = Math.floor(r.width * dpr);
+    c.height = Math.floor(r.height * dpr);
+    ctx2.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w: r.width, h: r.height };
+  }
+
+  let simSize = fitCanvas(simCv, sctx);
+  let gSize = fitCanvas(graphCv, gctx);
+
+  const kind = arena.kind;
+  const P = state.simParams[kind];
+
+  // runtime
+  let running = false;
+  let time = 0;
+  let lastTs = 0;
+  let history = [];   // {t, s, v}
+
+  // compute max durasi
+  function maxT() {
+    if (kind === 'glb') return P.t;
+    if (kind === 'glbb') return P.t;
+    if (kind === 'gjb') return Math.sqrt(2 * P.h / P.g);
+    return 10;
+  }
+
+  function reset() {
+    running = false;
+    time = 0;
+    history = [];
+    draw();
+  }
+
+  function step(dt) {
+    const T = maxT();
+    time += dt;
+    if (time >= T) { time = T; running = false; }
+
+    let s, v;
+    if (kind === 'glb') {
+      v = P.v;
+      s = v * time;
+    } else if (kind === 'glbb') {
+      v = P.v0 + P.a * time;
+      s = P.v0 * time + 0.5 * P.a * time * time;
+    } else if (kind === 'gjb') {
+      v = P.g * time;
+      s = 0.5 * P.g * time * time; // jarak jatuh
+    }
+    history.push({ t: time, s, v });
+    if (history.length > 600) history.shift();
+  }
+
+  function draw() {
+    drawScene();
+    drawGraph();
+    updateReadouts();
+  }
+
+  function updateReadouts() {
+    let s = 0, v = 0;
+    const t = time;
+    if (kind === 'glb') { v = P.v; s = v * t; }
+    else if (kind === 'glbb') { v = P.v0 + P.a * t; s = P.v0*t + 0.5*P.a*t*t; }
+    else if (kind === 'gjb') { v = P.g * t; s = 0.5 * P.g * t * t; }
+
+    document.getElementById('ro_t').textContent = t.toFixed(2) + ' s';
+    document.getElementById('ro_s').textContent = s.toFixed(2) + ' m';
+    document.getElementById('ro_v').textContent = v.toFixed(2) + ' m/s';
+  }
+
+  function drawScene() {
+    const w = simSize.w, h = simSize.h;
+    sctx.clearRect(0, 0, w, h);
+
+    // background gradient
+    const bg = sctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, '#020710');
+    bg.addColorStop(1, '#081226');
+    sctx.fillStyle = bg;
+    sctx.fillRect(0, 0, w, h);
+
+    const color = kind==='glb' ? '#4fc3f7' : kind==='glbb' ? '#ba68c8' : '#ffb74d';
+    const T = maxT();
+
+    if (kind === 'glb' || kind === 'glbb') {
+      // Jalur horizontal
+      const trackY = h * 0.6;
+      const trackX0 = 30;
+      const trackX1 = w - 30;
+
+      // track
+      sctx.strokeStyle = 'rgba(30,136,229,.4)';
+      sctx.lineWidth = 2;
+      sctx.beginPath();
+      sctx.moveTo(trackX0, trackY);
+      sctx.lineTo(trackX1, trackY);
+      sctx.stroke();
+
+      // tick marks
+      sctx.fillStyle = 'rgba(144,164,174,.6)';
+      sctx.font = '9px monospace';
+      sctx.textAlign = 'center';
+      const maxS = kind==='glb' ? P.v * T : P.v0*T + 0.5*P.a*T*T;
+      for (let i = 0; i <= 5; i++) {
+        const frac = i / 5;
+        const x = trackX0 + (trackX1 - trackX0) * frac;
+        const sVal = frac * maxS;
+        sctx.beginPath();
+        sctx.moveTo(x, trackY - 4);
+        sctx.lineTo(x, trackY + 4);
+        sctx.strokeStyle = 'rgba(144,164,174,.4)';
+        sctx.lineWidth = 1;
+        sctx.stroke();
+        sctx.fillText(sVal.toFixed(0), x, trackY + 16);
+      }
+      sctx.fillStyle = 'rgba(144,164,174,.7)';
+      sctx.fillText('posisi (m)', (trackX0 + trackX1)/2, trackY + 30);
+
+      // mobil
+      let s;
+      if (kind === 'glb') s = P.v * time;
+      else s = P.v0 * time + 0.5 * P.a * time * time;
+      const frac = maxS > 0 ? Math.min(s / maxS, 1) : 0;
+      const cx = trackX0 + (trackX1 - trackX0) * frac;
+
+      // glow
+      sctx.beginPath();
+      sctx.arc(cx, trackY - 18, 22, 0, Math.PI*2);
+      const g = sctx.createRadialGradient(cx, trackY-18, 2, cx, trackY-18, 22);
+      g.addColorStop(0, color + 'cc');
+      g.addColorStop(1, color + '00');
+      sctx.fillStyle = g;
+      sctx.fill();
+
+      // body
+      sctx.beginPath();
+      sctx.arc(cx, trackY - 18, 14, 0, Math.PI*2);
+      sctx.fillStyle = color;
+      sctx.fill();
+      sctx.strokeStyle = '#fff';
+      sctx.lineWidth = 2;
+      sctx.stroke();
+
+      // icon
+      sctx.font = '18px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+      sctx.textAlign = 'center';
+      sctx.textBaseline = 'middle';
+      sctx.fillText(arena.icon, cx, trackY - 17);
+
+      // velocity arrow
+      let v = kind==='glb' ? P.v : P.v0 + P.a*time;
+      const arrowLen = Math.min(60, v * 3);
+      if (arrowLen > 2) {
+        sctx.strokeStyle = color;
+        sctx.lineWidth = 2;
+        sctx.beginPath();
+        sctx.moveTo(cx + 20, trackY - 18);
+        sctx.lineTo(cx + 20 + arrowLen, trackY - 18);
+        sctx.stroke();
+        sctx.beginPath();
+        sctx.moveTo(cx + 20 + arrowLen, trackY - 18);
+        sctx.lineTo(cx + 20 + arrowLen - 6, trackY - 22);
+        sctx.lineTo(cx + 20 + arrowLen - 6, trackY - 14);
+        sctx.closePath();
+        sctx.fillStyle = color;
+        sctx.fill();
+      }
+    } else if (kind === 'gjb') {
+      // Jalur vertikal
+      const x = w * 0.4;
+      const yTop = 30;
+      const yBot = h - 30;
+
+      // garis ketinggian
+      sctx.strokeStyle = 'rgba(255,183,77,.4)';
+      sctx.setLineDash([4,4]);
+      sctx.beginPath();
+      sctx.moveTo(x, yTop);
+      sctx.lineTo(x, yBot);
+      sctx.stroke();
+      sctx.setLineDash([]);
+
+      // tick
+      sctx.fillStyle = 'rgba(144,164,174,.6)';
+      sctx.font = '9px monospace';
+      sctx.textAlign = 'left';
+      for (let i = 0; i <= 4; i++) {
+        const frac = i / 4;
+        const y = yTop + (yBot - yTop) * frac;
+        const hVal = P.h * (1 - frac);
+        sctx.beginPath();
+        sctx.moveTo(x - 4, y);
+        sctx.lineTo(x + 4, y);
+        sctx.strokeStyle = 'rgba(144,164,174,.4)';
+        sctx.lineWidth = 1;
+        sctx.stroke();
+        sctx.fillText(hVal.toFixed(0) + ' m', x + 10, y + 3);
+      }
+
+      // posisi jatuh
+      const sFall = 0.5 * P.g * time * time;
+      const frac = P.h > 0 ? Math.min(sFall / P.h, 1) : 0;
+      const cy = yTop + (yBot - yTop) * frac;
+
+      // glow
+      sctx.beginPath();
+      sctx.arc(x, cy, 22, 0, Math.PI*2);
+      const g = sctx.createRadialGradient(x, cy, 2, x, cy, 22);
+      g.addColorStop(0, color + 'cc');
+      g.addColorStop(1, color + '00');
+      sctx.fillStyle = g;
+      sctx.fill();
+
+      // body
+      sctx.beginPath();
+      sctx.arc(x, cy, 14, 0, Math.PI*2);
+      sctx.fillStyle = color;
+      sctx.fill();
+      sctx.strokeStyle = '#fff';
+      sctx.lineWidth = 2;
+      sctx.stroke();
+
+      sctx.font = '18px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+      sctx.textAlign = 'center';
+      sctx.textBaseline = 'middle';
+      sctx.fillText(arena.icon, x, cy + 1);
+
+      // velocity arrow (down)
+      const v = P.g * time;
+      const arrowLen = Math.min(60, v * 2);
+      if (arrowLen > 2) {
+        sctx.strokeStyle = color;
+        sctx.lineWidth = 2;
+        sctx.beginPath();
+        sctx.moveTo(x, cy + 22);
+        sctx.lineTo(x, cy + 22 + arrowLen);
+        sctx.stroke();
+        sctx.beginPath();
+        sctx.moveTo(x, cy + 22 + arrowLen);
+        sctx.lineTo(x - 5, cy + 22 + arrowLen - 7);
+        sctx.lineTo(x + 5, cy + 22 + arrowLen - 7);
+        sctx.closePath();
+        sctx.fillStyle = color;
+        sctx.fill();
+      }
+    }
+  }
+
+  function drawGraph() {
+    const w = gSize.w, h = gSize.h;
+    gctx.clearRect(0, 0, w, h);
+    gctx.fillStyle = '#05101f';
+    gctx.fillRect(0, 0, w, h);
+
+    // grid
+    gctx.strokeStyle = 'rgba(30,136,229,.15)';
+    gctx.lineWidth = 1;
+    for (let i = 1; i < 5; i++) {
+      const y = (h / 5) * i;
+      gctx.beginPath(); gctx.moveTo(0, y); gctx.lineTo(w, y); gctx.stroke();
+    }
+    const T = maxT();
+
+    // label
+    gctx.fillStyle = 'rgba(144,164,174,.7)';
+    gctx.font = '9px monospace';
+    gctx.textAlign = 'left';
+    gctx.fillText('s (m) & v (m/s)', 6, 12);
+    gctx.fillText('t (s) →', w - 42, h - 4);
+
+    // Grafik s vs t
+    const colorS = '#64ffda';
+    const colorV = '#ffb74d';
+
+    if (history.length > 1) {
+      const maxS = kind==='glb' ? P.v * T
+                : kind==='glbb' ? P.v0*T + 0.5*P.a*T*T
+                : P.h;
+      const maxV = kind==='glb' ? P.v
+                : kind==='glbb' ? P.v0 + P.a*T
+                : P.g * T;
+      const maxVal = Math.max(maxS, maxV, 1);
+
+      // draw s
+      gctx.strokeStyle = colorS;
+      gctx.lineWidth = 2;
+      gctx.beginPath();
+      for (let i = 0; i < history.length; i++) {
+        const p = history[i];
+        const x = (p.t / T) * (w - 20) + 10;
+        const y = h - 10 - (p.s / maxVal) * (h - 24);
+        if (i === 0) gctx.moveTo(x, y);
+        else gctx.lineTo(x, y);
+      }
+      gctx.stroke();
+
+      // draw v
+      gctx.strokeStyle = colorV;
+      gctx.beginPath();
+      for (let i = 0; i < history.length; i++) {
+        const p = history[i];
+        const x = (p.t / T) * (w - 20) + 10;
+        const y = h - 10 - (p.v / maxVal) * (h - 24);
+        if (i === 0) gctx.moveTo(x, y);
+        else gctx.lineTo(x, y);
+      }
+      gctx.stroke();
+    }
+
+    // legend
+    gctx.font = '9px monospace';
+    gctx.fillStyle = colorS;
+    gctx.fillText('■ s', w - 60, 12);
+    gctx.fillStyle = colorV;
+    gctx.fillText('■ v', w - 42, 12);
+  }
+
+  // animation loop khusus simulator
+  let rafId = null;
+  function tick(ts) {
+    if (!lastTs) lastTs = ts;
+    const dt = Math.min((ts - lastTs) / 1000, 0.05);
+    lastTs = ts;
+
+    if (running) {
+      step(dt);
+      draw();
+    }
+    rafId = requestAnimationFrame(tick);
+  }
+  rafId = requestAnimationFrame(tick);
+
+  activeSim = { raf: rafId, cleanup: () => { running = false; } };
+
+  // event bindings
+  function updateParamUI() {
+    if (kind === 'glb') {
+      document.getElementById('val_v').textContent = P.v + ' m/s';
+      document.getElementById('val_t').textContent = P.t + ' s';
+    } else if (kind === 'glbb') {
+      document.getElementById('val_v0').textContent = P.v0 + ' m/s';
+      document.getElementById('val_a').textContent = P.a + ' m/s²';
+      document.getElementById('val_t').textContent = P.t + ' s';
+    } else if (kind === 'gjb') {
+      document.getElementById('val_h').textContent = P.h + ' m';
+      document.getElementById('val_g').textContent = P.g + ' m/s²';
+    }
+  }
+
+  function bindSlider(id, key, parseFn) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener('input', () => {
+      P[key] = parseFn(el.value);
+      updateParamUI();
+      reset();
+      draw();
+      state.simParams[kind][key] = P[key];
+      saveState();
+    });
+  }
+
+  if (kind === 'glb') {
+    bindSlider('sl_v', 'v', v => parseFloat(v));
+    bindSlider('sl_t', 't', v => parseFloat(v));
+  } else if (kind === 'glbb') {
+    bindSlider('sl_v0', 'v0', v => parseFloat(v));
+    bindSlider('sl_a',  'a',  v => parseFloat(v));
+    bindSlider('sl_t',  't',  v => parseFloat(v));
+  } else if (kind === 'gjb') {
+    bindSlider('sl_h', 'h', v => parseFloat(v));
+    bindSlider('sl_g', 'g', v => parseFloat(v));
+  }
+
+  document.getElementById('simPlay').onclick = () => {
+    if (time >= maxT()) reset();
+    running = true;
+    lastTs = 0;
+  };
+  document.getElementById('simPause').onclick = () => { running = false; };
+  document.getElementById('simReset').onclick = () => { reset(); draw(); };
+
+  // Quiz submit
+  document.getElementById('btnSubmit').onclick = () => {
+    const inp = document.getElementById('ansInput');
+    const val = parseFloat(inp.value);
+    const res = document.getElementById('result');
+    if (isNaN(val)) {
+      res.className = 'result bad';
+      res.textContent = 'Masukkan angka yang valid.';
+      return;
+    }
+    if (Math.abs(val - ch.answer) < 0.01) {
+      res.className = 'result ok';
+      res.textContent = `✅ Benar! ${ch.explain}`;
+      completeArena(arena);
+    } else {
+      res.className = 'result bad';
+      res.textContent = `❌ Belum tepat. Coba amati simulasi lagi.`;
+    }
+  };
+
+  // initial draw
+  reset();
+  draw();
+}
+
+/* ========== 11. UJIAN ========== */
+function buildUjianHTML(ch) {
+  let html = `<p style="font-size:12px;color:#90a4ae;margin-bottom:6px;">${ch.intro}</p>`;
+  ch.questions.forEach((q, i) => {
+    html += `<div class="quiz-q"><b>Q${i+1}.</b> ${q.q}</div>`;
+    q.options.forEach((opt, j) => {
+      html += `<button class="opt-btn" data-q="${i}" data-o="${j}">${String.fromCharCode(65+j)}. ${opt}</button>`;
+    });
+  });
+  html += `<div class="result" id="result"></div>`;
+  return html;
+}
+
+function bindUjian(arena, ch) {
+  let correctCount = 0;
+  const answered = new Set();
+
+  document.querySelectorAll('.opt-btn').forEach(btn => {
+    btn.onclick = () => {
+      const qi = parseInt(btn.dataset.q);
+      const oi = parseInt(btn.dataset.o);
+      if (answered.has(qi)) return;
+      answered.add(qi);
+      const correct = ch.questions[qi].answer === oi;
+      if (correct) {
+        btn.classList.add('correct');
+        correctCount++;
+      } else {
+        btn.classList.add('wrong');
+        // tandai jawaban benar
+        const wrap = btn.parentElement;
+        wrap.querySelectorAll(`.opt-btn[data-q="${qi}"]`).forEach(b => {
+          if (parseInt(b.dataset.o) === ch.questions[qi].answer) {
+            b.classList.add('correct');
+          }
+        });
+      }
+      if (answered.size === ch.questions.length) {
+        const res = document.getElementById('result');
+        if (correctCount === ch.questions.length) {
+          res.className = 'result ok';
+          res.textContent = `🎉 Sempurna! Semua jawaban benar.`;
+          completeArena(arena);
+        } else {
+          res.className = 'result bad';
+          res.textContent = `Skor: ${correctCount}/${ch.questions.length}. Pelajari lagi zona GLB, GLBB, dan GJB.`;
+        }
+      }
+    };
+  });
+}
+
+/* ========== 12. COMPLETE ARENA ========== */
+function completeArena(arena) {
+  if (state.completed.includes(arena.id)) return;
+  state.completed.push(arena.id);
+  state.score += 100;
+  state.level = Math.floor(state.completed.length / 3) + 1;
+  updateHUD();
+  saveState();
+  showToast('⭐ +100 poin!');
+  setTimeout(closeModal, 1300);
+}
+
+/* ========== 13. INIT ========== */
+function init() {
+  resizeMain();
+  updateHUD();
+
+  if (!state.player.x || !state.player.y) {
+    state.player.x = 400;
+    state.player.y = 400;
+  }
+  state.camera.x = Math.max(0, Math.min(WORLD.width - W, state.player.x - W/2));
+  state.camera.y = Math.max(0, Math.min(WORLD.height - H, state.player.y - H/2));
+
+  setTimeout(() => {
+    const l = document.getElementById('loading');
+    l.style.opacity = '0';
+    setTimeout(() => { l.style.display = 'none'; }, 400);
+  }, 600);
+
+  requestAnimationFrame(loop);
+
+  window.addEventListener('beforeunload', saveState);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) saveState();
+  });
+}
+
+window.resetProgress = function() {
+  localStorage.removeItem(STORAGE_KEY);
+  location.reload();
+};
+
+init();
+</script>
+<!-- ============ EDUQUEST SYNC ADAPTER ============ -->
+<script src="eduquest.js"></script>
+<script>
+(function(){
+  if (typeof EduQuest === 'undefined') return;
+  const slug = EduQuest.getCurrentSlug();
+  if (!slug) return;
+
+  const LEGACY_KEY = "fisikaWorldSim_v1";
+
+  function syncPhysics() {
+    let raw;
+    try { raw = JSON.parse(localStorage.getItem(LEGACY_KEY) || "{}"); }
+    catch(e) { raw = {}; }
+
+    // score   → xp
+    // level   → dipakai sebagai badges info
+    // completed[] → daftar arena selesai
+    const score    = Number(raw.score || 0);
+    const level    = Number(raw.level || 1);
+    const completed = Array.isArray(raw.completed) ? raw.completed : [];
+
+    const xp    = score;                 // 1 poin = 1 XP
+    const plays = completed.length;      // 1 arena selesai = 1 "main"
+    const coins = Math.floor(xp / 10);
+
+    // Badges: kumpulan arena yang sudah diselesaikan
+    const badges = completed.map(id => 'arena_' + id);
+    if (level > 1) badges.push('level_' + level);
+
+    // Scores: catat setiap arena selesai (nilai tetap 100)
+    const scores = completed.map(id => ({
+      score: 100,
+      at: raw.timestamp ? new Date(raw.timestamp).toISOString()
+                        : new Date().toISOString(),
+      arena: id
+    }));
+
+    EduQuest.saveSubjectData('physics', {
+      xp: xp,
+      coins: coins,
+      plays: plays,
+      lastPlayed: raw.timestamp ? new Date(raw.timestamp).toISOString()
+                                : new Date().toISOString(),
+      badges: badges,
+      scores: scores,
+      meta: { level: level, totalArena: completed.length }
+    });
+  }
+
+  syncPhysics();
+
+  let lastRaw = localStorage.getItem(LEGACY_KEY);
+  setInterval(() => {
+    const now = localStorage.getItem(LEGACY_KEY);
+    if (now !== lastRaw) { lastRaw = now; syncPhysics(); }
+  }, 2000);
+
+  window.addEventListener('beforeunload', syncPhysics);
+  window.addEventListener('pagehide', syncPhysics);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) syncPhysics();
+  });
+})();
+</script>
+</body>
+</html>

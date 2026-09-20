@@ -1,0 +1,1171 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AtomQuest - Eksplorasi Kimia</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #0a0e1a;
+    font-family: 'Courier New', monospace;
+    color: #e0e6f0;
+    touch-action: none;
+    user-select: none;
+  }
+  #gameCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #1a2233;
+  }
+  #ui {
+    position: fixed; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column;
+  }
+  #topBar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px;
+    background: linear-gradient(180deg, rgba(10,14,26,0.9), rgba(10,14,26,0.4));
+    pointer-events: none;
+  }
+  .stat-box {
+    background: rgba(20,30,50,0.85);
+    border: 2px solid #3a5a8a;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 4px;
+    box-shadow: 0 0 8px rgba(58,90,138,0.5);
+    pointer-events: auto;
+  }
+  .stat-box b { color: #6ee7ff; }
+  #energyBar {
+    width: 80px; height: 8px; background: #1a2233;
+    border: 1px solid #3a5a8a; margin-top: 4px; border-radius: 2px;
+    overflow: hidden;
+  }
+  #energyFill {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #4ade80, #22d3ee);
+    transition: width 0.3s;
+  }
+  #controls {
+    position: fixed; bottom: 20px; left: 0; right: 0;
+    display: flex; justify-content: space-between; padding: 0 20px;
+    pointer-events: none;
+  }
+  #joystick {
+    width: 120px; height: 120px;
+    background: rgba(30,40,70,0.5);
+    border: 3px solid #4a7ab5;
+    border-radius: 50%;
+    position: relative;
+    pointer-events: auto;
+    box-shadow: 0 0 20px rgba(74,122,181,0.4);
+  }
+  #stick {
+    width: 50px; height: 50px;
+    background: radial-gradient(circle, #6ee7ff, #3a7ab5);
+    border-radius: 50%;
+    position: absolute;
+    top: 35px; left: 35px;
+    transition: transform 0.05s;
+    box-shadow: 0 0 12px #6ee7ff;
+  }
+  #actionBtns {
+    display: flex; flex-direction: column; gap: 10px;
+    pointer-events: auto; align-items: flex-end;
+  }
+  .btn {
+    width: 70px; height: 70px; border-radius: 50%;
+    background: rgba(30,40,70,0.7);
+    border: 3px solid #4a7ab5;
+    color: #6ee7ff;
+    font-size: 24px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; pointer-events: auto;
+    box-shadow: 0 0 15px rgba(110,231,255,0.3);
+    font-weight: bold;
+  }
+  .btn:active {
+    background: rgba(110,231,255,0.3);
+    transform: scale(0.95);
+  }
+  #scanBtn { border-color: #fbbf24; color: #fbbf24; }
+  #scanBtn:active { background: rgba(251,191,36,0.3); }
+  
+  #modal {
+    position: fixed; inset: 0;
+    background: rgba(5,8,15,0.92);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px; z-index: 100;
+    pointer-events: auto;
+  }
+  #modal.show { display: flex; }
+  .card {
+    background: linear-gradient(160deg, #1a2a45, #0f1a30);
+    border: 3px solid #4a7ab5;
+    border-radius: 12px;
+    padding: 20px;
+    max-width: 380px; width: 100%;
+    box-shadow: 0 0 40px rgba(110,231,255,0.4);
+    animation: pop 0.25s ease-out;
+    max-height: 80vh; overflow-y: auto;
+  }
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .card h2 {
+    color: #6ee7ff; font-size: 18px;
+    margin-bottom: 12px; text-align: center;
+    text-shadow: 0 0 10px rgba(110,231,255,0.6);
+    letter-spacing: 1px;
+  }
+  .card .formula {
+    font-size: 28px; text-align: center; color: #fbbf24;
+    margin: 10px 0; text-shadow: 0 0 15px rgba(251,191,36,0.6);
+  }
+  .card .type {
+    text-align: center; font-size: 12px; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .card .desc {
+    font-size: 13px; line-height: 1.6; color: #cbd5e1;
+    margin-bottom: 12px; text-align: justify;
+  }
+  .card .reward {
+    background: rgba(74,222,128,0.15);
+    border-left: 3px solid #4ade80;
+    padding: 8px 12px; font-size: 12px; color: #4ade80;
+    margin-bottom: 14px;
+  }
+  .card .quiz {
+    background: rgba(110,231,255,0.08);
+    border: 1px solid #4a7ab5;
+    padding: 10px; border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .card .quiz p { font-size: 13px; margin-bottom: 8px; color: #e0e6f0; }
+  .quiz-opt {
+    display: block; width: 100%;
+    padding: 8px; margin: 5px 0;
+    background: rgba(30,40,70,0.8);
+    border: 2px solid #3a5a8a;
+    color: #e0e6f0;
+    border-radius: 5px; font-size: 12px;
+    font-family: inherit; cursor: pointer;
+    text-align: left;
+  }
+  .quiz-opt:active { background: rgba(110,231,255,0.2); }
+  .quiz-opt.correct { background: rgba(74,222,128,0.3); border-color: #4ade80; color: #4ade80; }
+  .quiz-opt.wrong { background: rgba(239,68,68,0.3); border-color: #ef4444; color: #ef4444; }
+  .close-btn {
+    width: 100%; padding: 10px;
+    background: linear-gradient(90deg, #3a7ab5, #4a7ab5);
+    border: none; color: white; font-size: 14px;
+    font-family: inherit; font-weight: bold;
+    border-radius: 6px; cursor: pointer;
+    letter-spacing: 1px;
+  }
+  .close-btn:active { opacity: 0.8; }
+  
+  #toast {
+    position: fixed; top: 80px; left: 50%;
+    transform: translateX(-50%) translateY(-20px);
+    background: rgba(20,30,50,0.95);
+    border: 2px solid #6ee7ff;
+    color: #6ee7ff;
+    padding: 8px 16px; border-radius: 6px;
+    font-size: 12px; opacity: 0;
+    transition: all 0.3s; pointer-events: none;
+    z-index: 50; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  
+  #minimap {
+    position: fixed; top: 70px; right: 12px;
+    width: 100px; height: 100px;
+    background: rgba(10,14,26,0.8);
+    border: 2px solid #3a5a8a;
+    border-radius: 6px;
+    pointer-events: none;
+  }
+  
+  #startScreen {
+    position: fixed; inset: 0;
+    background: radial-gradient(circle at 50% 50%, #1a2a45, #05080f);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    z-index: 200; padding: 20px; text-align: center;
+  }
+  #startScreen h1 {
+    color: #6ee7ff; font-size: 32px; margin-bottom: 8px;
+    text-shadow: 0 0 20px rgba(110,231,255,0.8);
+    letter-spacing: 3px;
+  }
+  #startScreen .sub {
+    color: #94a3b8; font-size: 12px;
+    margin-bottom: 30px; letter-spacing: 2px;
+  }
+  #startScreen .atom-art {
+    font-size: 60px; margin-bottom: 20px;
+    animation: spin 6s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .start-btn {
+    padding: 14px 40px;
+    background: linear-gradient(90deg, #3a7ab5, #6ee7ff);
+    border: none; color: #0a0e1a;
+    font-family: inherit; font-size: 16px;
+    font-weight: bold; border-radius: 8px;
+    cursor: pointer; letter-spacing: 2px;
+    box-shadow: 0 0 25px rgba(110,231,255,0.5);
+  }
+  .start-btn:active { transform: scale(0.95); }
+  .info-text {
+    margin-top: 20px; font-size: 11px;
+    color: #64748b; line-height: 1.6;
+    max-width: 320px;
+  }
+  .reset-btn {
+    margin-top: 15px; padding: 8px 20px;
+    background: transparent; border: 1px solid #475569;
+    color: #94a3b8; font-family: inherit;
+    font-size: 11px; border-radius: 6px;
+    cursor: pointer;
+  }
+  
+  #collectedPanel {
+    position: fixed; bottom: 160px; left: 12px;
+    background: rgba(20,30,50,0.85);
+    border: 2px solid #3a5a8a;
+    border-radius: 6px;
+    padding: 6px 8px; font-size: 10px;
+    max-width: 140px; pointer-events: none;
+  }
+  #collectedPanel .item {
+    color: #4ade80; margin: 2px 0;
+    display: flex; justify-content: space-between;
+  }
+  #collectedPanel .item.locked { color: #475569; }
+</style>
+</head>
+<body>
+
+<canvas id="gameCanvas"></canvas>
+
+<div id="ui">
+  <div id="topBar">
+    <div class="stat-box">
+      <div>SKOR: <b id="scoreVal">0</b></div>
+      <div>XP: <b id="xpVal">0</b></div>
+      <div id="energyBar"><div id="energyFill"></div></div>
+    </div>
+    <div class="stat-box">
+      <div>LEVEL <b id="levelVal">1</b></div>
+      <div style="font-size:9px; color:#94a3b8;" id="zoneName">Zona: Hidrogen Valley</div>
+    </div>
+  </div>
+  
+  <canvas id="minimap" width="100" height="100"></canvas>
+  
+  <div id="collectedPanel">
+    <div style="color:#6ee7ff; font-weight:bold; margin-bottom:3px;">📦 KOLEKSI</div>
+    <div id="collectedList"></div>
+  </div>
+  
+  <div id="controls">
+    <div id="joystick"><div id="stick"></div></div>
+    <div id="actionBtns">
+      <div class="btn" id="scanBtn">🔍</div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="modal">
+  <div class="card" id="cardContent"></div>
+</div>
+
+<div id="startScreen">
+  <div class="atom-art">⚛️</div>
+  <h1>ATOMQUEST</h1>
+  <div class="sub">EKSPLORASI DUNIA KIMIA 2D</div>
+  <button class="start-btn" id="startBtn">MULAI PETUALANGAN</button>
+  <button class="reset-btn" id="resetBtn">🔄 Reset Progress</button>
+  <div class="info-text">
+    Jelajahi dunia open-world, temukan atom, senyawa & campuran.<br>
+    Gunakan joystick untuk bergerak & tombol 🔍 untuk menganalisis objek di dekatmu.
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  ATOMQUEST - Gamifikasi Kimia Open World 2D Pixel
+//  Menggunakan Canvas 2D (WebGL-like pixel rendering)
+//  Penyimpanan: localStorage (JSON)
+// ============================================================
+
+// ---------- DATA KIMIA ----------
+const CHEMISTRY_DB = {
+  // ATOM (Unsur)
+  H: { formula:'H', name:'Hidrogen', type:'Atom', color:'#7dd3fc',
+       desc:'Unsur paling ringan di alam semesta. Terdiri dari 1 proton dan 1 elektron. Melimpah di bintang dan air.',
+       reward:50, xp:10,
+       quiz:{ q:'Berapa jumlah proton dalam atom Hidrogen?', opts:['1','2','3','0'], ans:0 } },
+  O: { formula:'O', name:'Oksigen', type:'Atom', color:'#f87171',
+       desc:'Unsur golongan chalcogen. Diperlukan untuk respirasi. Berbentuk gas O₂ di atmosfer bumi.',
+       reward:60, xp:12,
+       quiz:{ q:'Oksigen di atmosfer umumnya berbentuk molekul...', opts:['O','O₂','O₃','O₄'], ans:1 } },
+  C: { formula:'C', name:'Karbon', type:'Atom', color:'#94a3b8',
+       desc:'Tulang punggung kehidupan. Mampu membentuk rantai panjang & cincin. Ada 4 elektron valensi.',
+       reward:55, xp:11,
+       quiz:{ q:'Berapa elektron valensi atom Karbon?', opts:['2','4','6','8'], ans:1 } },
+  N: { formula:'N', name:'Nitrogen', type:'Atom', color:'#60a5fa',
+       desc:'78% atmosfer bumi adalah nitrogen. Membentuk ikatan rangkap tiga N≡N yang sangat kuat.',
+       reward:55, xp:11,
+       quiz:{ q:'Gas nitrogen di atmosfer berbentuk...', opts:['N','N₂','N₃','NO'], ans:1 } },
+  Na:{ formula:'Na', name:'Natrium', type:'Atom', color:'#fbbf24',
+       desc:'Logam alkali sangat reaktif. Bereaksi hebat dengan air menghasilkan gas hidrogen.',
+       reward:65, xp:13,
+       quiz:{ q:'Natrium termasuk golongan...', opts:['Halogen','Alkali','Gas mulia','Transisi'], ans:1 } },
+  Cl:{ formula:'Cl', name:'Klorin', type:'Atom', color:'#a3e635',
+       desc:'Gas halogen berwarna hijau kekuningan. Digunakan sebagai desinfektan air.',
+       reward:65, xp:13,
+       quiz:{ q:'Klorin termasuk golongan...', opts:['Alkali','Halogen','Gas mulia','Logam'], ans:1 } },
+  Fe:{ formula:'Fe', name:'Besi', type:'Atom', color:'#d97706',
+       desc:'Logam transisi. Inti bumi sebagian besar tersusun dari besi. Membentuk hemoglobin.',
+       reward:70, xp:15,
+       quiz:{ q:'Lambang kimia untuk besi adalah...', opts:['Be','B','Fe','F'], ans:2 } },
+  
+  // SENYAWA (Compound)
+  H2O: { formula:'H₂O', name:'Air', type:'Senyawa', color:'#38bdf8',
+       desc:'Senyawa paling penting bagi kehidupan. Tersusun dari 2 atom H dan 1 atom O dengan ikatan kovalen polar.',
+       reward:100, xp:25,
+       quiz:{ q:'Air (H₂O) tersusun dari berapa atom?', opts:['2','3','4','5'], ans:1 } },
+  CO2:{ formula:'CO₂', name:'Karbon Dioksida', type:'Senyawa', color:'#64748b',
+       desc:'Gas hasil respirasi & pembakaran. Terdiri dari 1 atom C dan 2 atom O (ikatan kovalen).',
+       reward:110, xp:28,
+       quiz:{ q:'Jenis ikatan dalam CO₂ adalah...', opts:['Ionik','Kovalen','Logam','Hidrogen'], ans:1 } },
+  NaCl:{ formula:'NaCl', name:'Garam Dapur', type:'Senyawa', color:'#f0f0f0',
+       desc:'Natrium klorida, senyawa ionik. Tersusun dari kation Na⁺ dan anion Cl⁻ dalam kisi kristal.',
+       reward:120, xp:30,
+       quiz:{ q:'NaCl termasuk senyawa...', opts:['Kovalen','Ionik','Asam','Basa'], ans:1 } },
+  CH4:{ formula:'CH₄', name:'Metana', type:'Senyawa', color:'#a78bfa',
+       desc:'Gas alam utama. Senyawa organik paling sederhana dengan 1 C & 4 H (tetrahedral).',
+       reward:115, xp:28,
+       quiz:{ q:'Bentuk geometri molekul CH₄ adalah...', opts:['Linear','Tetrahedral','Trigonal','Oktahedral'], ans:1 } },
+  C6H12O6:{ formula:'C₆H₁₂O₆', name:'Glukosa', type:'Senyawa', color:'#f59e0b',
+       desc:'Gula sederhana, sumber energi sel. Hasil fotosintesis tumbuhan.',
+       reward:150, xp:40,
+       quiz:{ q:'Glukosa dihasilkan melalui proses...', opts:['Respirasi','Fotosintesis','Fermentasi','Oksidasi'], ans:1 } },
+  H2SO4:{ formula:'H₂SO₄', name:'Asam Sulfat', type:'Senyawa', color:'#eab308',
+       desc:'Asam kuat yang sangat korosif. Digunakan dalam industri & aki kendaraan.',
+       reward:140, xp:35,
+       quiz:{ q:'H₂SO₄ adalah contoh...', opts:['Basa kuat','Asam kuat','Garam','Oksida'], ans:1 } },
+  
+  // CAMPURAN (Mixture)
+  UDARA:{ formula:'Udara', name:'Udara', type:'Campuran', color:'#bae6fd',
+       desc:'Campuran homogen gas: 78% N₂, 21% O₂, 1% gas lain. Komposisinya seragam.',
+       reward:130, xp:32,
+       quiz:{ q:'Udara termasuk jenis campuran...', opts:['Heterogen','Homogen','Senyawa','Unsur'], ans:1 } },
+  AIRLAUT:{ formula:'Air Laut', name:'Air Laut', type:'Campuran', color:'#0ea5e9',
+       desc:'Campuran homogen air + garam & mineral. Bisa dipisahkan melalui destilasi.',
+       reward:135, xp:33,
+       quiz:{ q:'Cara memisahkan garam dari air laut adalah...', opts:['Filtrasi','Destilasi','Sublimasi','Kromatografi'], ans:1 } },
+  TANAH:{ formula:'Tanah', name:'Tanah', type:'Campuran', color:'#78350f',
+       desc:'Campuran heterogen: pasir, lempung, humus, air, udara. Fase dapat dibedakan.',
+       reward:125, xp:30,
+       quiz:{ q:'Tanah termasuk campuran...', opts:['Homogen','Heterogen','Senyawa','Unsur'], ans:1 } },
+  SIRUP:{ formula:'Sirup', name:'Sirup Gula', type:'Campuran', color:'#dc2626',
+       desc:'Campuran homogen gula + air + perasa. Gula larut sempurna dalam air.',
+       reward:120, xp:28,
+       quiz:{ q:'Sirup adalah contoh campuran...', opts:['Heterogen','Homogen','Suspensi','Koloid'], ans:1 } },
+  KOPI:{ formula:'Kopi', name:'Kopi Susu', type:'Campuran', color:'#78350f',
+       desc:'Campuran heterogen: air, kopi, susu, gula. Endapan dapat terlihat.',
+       reward:125, xp:30,
+       quiz:{ q:'Kopi susu yang mengendap termasuk...', opts:['Larutan','Suspensi','Koloid','Senyawa'], ans:1 } },
+  SEMEN:{ formula:'Semen', name:'Campuran Semen', type:'Campuran', color:'#9ca3af',
+       desc:'Campuran heterogen bubuk: kapur, silika, alumina, besi oksida. Bahan bangunan utama.',
+       reward:130, xp:32,
+       quiz:{ q:'Komponen utama semen adalah...', opts:['Kapur & silika','Emas','Plastik','Kayu'], ans:0 } },
+};
+
+// Zona dunia berdasarkan tipe
+const ZONES = [
+  { name:'Hidrogen Valley',   x:0,    y:0,    w:800,  h:800,  type:'Atom',     bg:'#1e3a5f' },
+  { name:'Senyawa Forest',    x:800,  y:0,    w:800,  h:800,  type:'Senyawa',  bg:'#1a4a3a' },
+  { name:'Campuran Desert',   x:0,    y:800,  w:800,  h:800,  type:'Campuran', bg:'#5a4a2a' },
+  { name:'Laboratorium Pusat',x:800,  y:800,  w:800,  h:800,  type:'Mix',      bg:'#3a2a5a' },
+];
+
+const WORLD_SIZE = 1600;
+
+// ---------- STATE ----------
+let state = {
+  player: { x: 400, y: 400, vx: 0, vy: 0, speed: 2.6, dir: 0, anim: 0 },
+  camera: { x: 0, y: 0 },
+  objects: [],        // objek yang bisa ditemukan
+  particles: [],
+  score: 0,
+  xp: 0,
+  level: 1,
+  energy: 100,
+  collected: {},      // { key: true }
+  discovered: {},     // { key: true } - untuk XP
+  currentZone: 'Hidrogen Valley',
+  nearObject: null,
+  keys: {},
+  running: false,
+  time: 0,
+};
+
+// ---------- SAVE / LOAD (JSON) ----------
+const SAVE_KEY = 'atomquest_save_v1';
+
+function saveGame() {
+  const saveData = {
+    version: 1,
+    timestamp: Date.now(),
+    score: state.score,
+    xp: state.xp,
+    level: state.level,
+    energy: state.energy,
+    collected: state.collected,
+    discovered: state.discovered,
+    playerPos: { x: state.player.x, y: state.player.y },
+  };
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+  } catch(e) { console.warn('Save failed', e); }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return false;
+    const data = JSON.parse(raw);
+    state.score = data.score || 0;
+    state.xp = data.xp || 0;
+    state.level = data.level || 1;
+    state.energy = data.energy ?? 100;
+    state.collected = data.collected || {};
+    state.discovered = data.discovered || {};
+    if (data.playerPos) {
+      state.player.x = data.playerPos.x;
+      state.player.y = data.playerPos.y;
+    }
+    return true;
+  } catch(e) { console.warn('Load failed', e); return false; }
+}
+
+function resetSave() {
+  localStorage.removeItem(SAVE_KEY);
+  state.score = 0; state.xp = 0; state.level = 1; state.energy = 100;
+  state.collected = {}; state.discovered = {};
+  state.player.x = 400; state.player.y = 400;
+  spawnObjects();
+  updateUI();
+  renderCollected();
+  toast('Progress direset!');
+}
+
+// ---------- SPAWN OBJECTS ----------
+function spawnObjects() {
+  state.objects = [];
+  const allKeys = Object.keys(CHEMISTRY_DB);
+  const perZone = Math.ceil(allKeys.length / 3);
+  
+  // Kelompokkan berdasarkan tipe
+  const atoms = allKeys.filter(k => CHEMISTRY_DB[k].type === 'Atom');
+  const compounds = allKeys.filter(k => CHEMISTRY_DB[k].type === 'Senyawa');
+  const mixtures = allKeys.filter(k => CHEMISTRY_DB[k].type === 'Campuran');
+  
+  const groups = [
+    { list: atoms,     zone: ZONES[0] },  // Atom -> Hidrogen Valley
+    { list: compounds, zone: ZONES[1] },  // Senyawa -> Senyawa Forest
+    { list: mixtures,  zone: ZONES[2] },  // Campuran -> Campuran Desert
+  ];
+  
+  groups.forEach(({list, zone}) => {
+    list.forEach((key, i) => {
+      const angle = (i / list.length) * Math.PI * 2;
+      const radius = 100 + Math.random() * 250;
+      const cx = zone.x + zone.w/2 + Math.cos(angle) * radius;
+      const cy = zone.y + zone.h/2 + Math.sin(angle) * radius;
+      state.objects.push({
+        key,
+        x: Math.max(zone.x+40, Math.min(zone.x+zone.w-40, cx)),
+        y: Math.max(zone.y+40, Math.min(zone.y+zone.h-40, cy)),
+        type: CHEMISTRY_DB[key].type,
+        color: CHEMISTRY_DB[key].color,
+        bob: Math.random() * Math.PI * 2,
+        discovered: !!state.discovered[key],
+      });
+    });
+  });
+  
+  // Tambahan objek di zona lab
+  allKeys.forEach((key, i) => {
+    if (Math.random() < 0.3 && !state.objects.find(o => o.key === key)) {
+      const z = ZONES[3];
+      state.objects.push({
+        key,
+        x: z.x + 50 + Math.random() * (z.w - 100),
+        y: z.y + 50 + Math.random() * (z.h - 100),
+        type: CHEMISTRY_DB[key].type,
+        color: CHEMISTRY_DB[key].color,
+        bob: Math.random() * Math.PI * 2,
+        discovered: !!state.discovered[key],
+      });
+    }
+  });
+}
+
+// ---------- CANVAS SETUP ----------
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const minimap = document.getElementById('minimap');
+const mctx = minimap.getContext('2d');
+
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth;
+  H = window.innerHeight;
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ---------- ZONE DETECTION ----------
+function getZone(x, y) {
+  for (const z of ZONES) {
+    if (x >= z.x && x < z.x + z.w && y >= z.y && y < z.y + z.h) return z;
+  }
+  return ZONES[0];
+}
+
+// ---------- RENDER HELPERS ----------
+function drawPixelRect(x, y, w, h, color) {
+  ctx.fillStyle = color;
+  ctx.fillRect(Math.floor(x), Math.floor(y), Math.ceil(w), Math.ceil(h));
+}
+
+function drawPixelText(text, x, y, size, color, align='left') {
+  ctx.font = `bold ${size}px 'Courier New', monospace`;
+  ctx.fillStyle = color;
+  ctx.textAlign = align;
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, Math.floor(x), Math.floor(y));
+}
+
+// ---------- WORLD RENDER ----------
+function renderWorld() {
+  const cam = state.camera;
+  
+  // Background dasar
+  ctx.fillStyle = '#0a0e1a';
+  ctx.fillRect(0, 0, W, H);
+  
+  // Render setiap zona
+  ZONES.forEach(zone => {
+    const sx = zone.x - cam.x;
+    const sy = zone.y - cam.y;
+    
+    if (sx > W || sy > H || sx + zone.w < 0 || sy + zone.h < 0) return;
+    
+    // Lantai zona dengan pola pixel
+    drawPixelRect(sx, sy, zone.w, zone.h, zone.bg);
+    
+    // Grid pattern
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    const gridSize = 40;
+    const startGX = Math.floor((cam.x - zone.x) / gridSize) * gridSize;
+    const startGY = Math.floor((cam.y - zone.y) / gridSize) * gridSize;
+    for (let gx = startGX; gx < zone.w; gx += gridSize) {
+      const px = zone.x + gx - cam.x;
+      if (px < -2 || px > W + 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(px, Math.max(0, sy));
+      ctx.lineTo(px, Math.min(H, sy + zone.h));
+      ctx.stroke();
+    }
+    for (let gy = startGY; gy < zone.h; gy += gridSize) {
+      const py = zone.y + gy - cam.y;
+      if (py < -2 || py > H + 2) continue;
+      ctx.beginPath();
+      ctx.moveTo(Math.max(0, sx), py);
+      ctx.lineTo(Math.min(W, sx + zone.w), py);
+      ctx.stroke();
+    }
+    
+    // Border zona
+    ctx.strokeStyle = 'rgba(110,231,255,0.3)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(sx, sy, zone.w, zone.h);
+    
+    // Label zona
+    if (sx > -200 && sy > -50 && sx < W && sy < H) {
+      drawPixelText(zone.name.toUpperCase(), sx + zone.w/2, sy + 20, 12, 'rgba(110,231,255,0.5)', 'center');
+    }
+    
+    // Dekorasi pixel
+    const seed = zone.x * 31 + zone.y * 17;
+    for (let i = 0; i < 40; i++) {
+      const rx = ((seed * (i+1) * 9301 + 49297) % 233280) / 233280;
+      const ry = ((seed * (i+2) * 9301 + 49297) % 233280) / 233280;
+      const dx = zone.x + rx * zone.w - cam.x;
+      const dy = zone.y + ry * zone.h - cam.y;
+      if (dx < -10 || dx > W + 10 || dy < -10 || dy > H + 10) continue;
+      const decoColor = zone.type === 'Atom' ? '#3a7ab5' :
+                       zone.type === 'Senyawa' ? '#2a6a4a' :
+                       zone.type === 'Campuran' ? '#7a5a2a' : '#5a3a8a';
+      drawPixelRect(dx, dy, 4, 4, decoColor);
+    }
+  });
+  
+  // Objek-objek kimia
+  state.objects.forEach(obj => {
+    const sx = obj.x - cam.x;
+    const sy = obj.y - cam.y + Math.sin(obj.bob) * 3;
+    if (sx < -60 || sx > W + 60 || sy < -60 || sy > H + 60) return;
+    
+    // Glow effect
+    const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, 40);
+    glow.addColorStop(0, obj.color + '66');
+    glow.addColorStop(1, obj.color + '00');
+    ctx.fillStyle = glow;
+    ctx.fillRect(sx - 40, sy - 40, 80, 80);
+    
+    // Objek pixel
+    const size = obj.discovered ? 20 : 24;
+    drawPixelRect(sx - size/2, sy - size/2, size, size, obj.color);
+    drawPixelRect(sx - size/2 + 2, sy - size/2 + 2, size - 4, size - 4, obj.discovered ? '#1a2233' : obj.color);
+    if (obj.discovered) {
+      drawPixelRect(sx - size/2 + 4, sy - size/2 + 4, size - 8, size - 8, obj.color + 'cc');
+    }
+    
+    // Tanda tanya untuk yang belum ditemukan
+    if (!obj.discovered) {
+      drawPixelText('?', sx, sy, 14, '#fff', 'center');
+    } else {
+      drawPixelText('✓', sx, sy, 12, '#fff', 'center');
+    }
+    
+    // Highlight jika dekat
+    if (state.nearObject === obj) {
+      ctx.strokeStyle = '#6ee7ff';
+      ctx.lineWidth = 2;
+      const pulse = 30 + Math.sin(state.time * 5) * 5;
+      ctx.strokeRect(sx - pulse/2, sy - pulse/2, pulse, pulse);
+      drawPixelText('TEKAN 🔍', sx, sy - 35, 10, '#6ee7ff', 'center');
+    }
+  });
+  
+  // Player (karakter pixel)
+  drawPlayer(cam);
+  
+  // Particles
+  state.particles.forEach(p => {
+    const sx = p.x - cam.x;
+    const sy = p.y - cam.y;
+    ctx.fillStyle = p.color;
+    ctx.globalAlpha = p.life;
+    ctx.fillRect(sx, sy, p.size, p.size);
+    ctx.globalAlpha = 1;
+  });
+}
+
+function drawPlayer(cam) {
+  const p = state.player;
+  const sx = p.x - cam.x;
+  const sy = p.y - cam.y;
+  const bob = Math.sin(p.anim) * 1.5;
+  
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(sx, sy + 16, 12, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+  
+  // Body (lab coat putih)
+  drawPixelRect(sx - 8, sy - 6 + bob, 16, 18, '#e0e6f0');
+  // Aksen biru
+  drawPixelRect(sx - 8, sy - 6 + bob, 16, 4, '#6ee7ff');
+  
+  // Head
+  drawPixelRect(sx - 7, sy - 18 + bob, 14, 14, '#fcd5b5');
+  // Hair
+  drawPixelRect(sx - 8, sy - 20 + bob, 16, 5, '#3a2a1a');
+  
+  // Eyes
+  const eyeDir = p.dir === 1 ? 2 : p.dir === 3 ? -2 : 0;
+  drawPixelRect(sx - 4 + eyeDir, sy - 14 + bob, 2, 3, '#0a0e1a');
+  drawPixelRect(sx + 2 + eyeDir, sy - 14 + bob, 2, 3, '#0a0e1a');
+  
+  // Goggles (kacamata lab)
+  ctx.strokeStyle = '#6ee7ff';
+  ctx.lineWidth = 1.5;
+  ctx.strokeRect(sx - 6, sy - 15 + bob, 5, 5);
+  ctx.strokeRect(sx + 1, sy - 15 + bob, 5, 5);
+  
+  // Direction indicator
+  if (p.dir === 0) drawPixelRect(sx - 2, sy - 24 + bob, 4, 3, '#6ee7ff');
+  if (p.dir === 2) drawPixelRect(sx - 2, sy + 14 + bob, 4, 3, '#6ee7ff');
+}
+
+// ---------- MINIMAP ----------
+function renderMinimap() {
+  mctx.fillStyle = '#0a0e1a';
+  mctx.fillRect(0, 0, 100, 100);
+  
+  const scale = 100 / WORLD_SIZE;
+  
+  ZONES.forEach(z => {
+    mctx.fillStyle = z.bg;
+    mctx.fillRect(z.x * scale, z.y * scale, z.w * scale, z.h * scale);
+  });
+  
+  // Objects
+  state.objects.forEach(o => {
+    mctx.fillStyle = o.discovered ? o.color : '#475569';
+    mctx.fillRect(o.x * scale - 1, o.y * scale - 1, 2, 2);
+  });
+  
+  // Player
+  const p = state.player;
+  mctx.fillStyle = '#6ee7ff';
+  mctx.fillRect(p.x * scale - 2, p.y * scale - 2, 4, 4);
+  mctx.strokeStyle = '#fff';
+  mctx.lineWidth = 1;
+  mctx.strokeRect(p.x * scale - 2, p.y * scale - 2, 4, 4);
+}
+
+// ---------- PARTICLES ----------
+function spawnParticles(x, y, color, count=10) {
+  for (let i = 0; i < count; i++) {
+    state.particles.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 4,
+      vy: (Math.random() - 0.5) * 4 - 1,
+      life: 1,
+      size: 2 + Math.random() * 3,
+      color,
+    });
+  }
+}
+
+function updateParticles(dt) {
+  for (let i = state.particles.length - 1; i >= 0; i--) {
+    const p = state.particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.15;
+    p.life -= dt * 0.03;
+    if (p.life <= 0) state.particles.splice(i, 1);
+  }
+}
+
+// ---------- GAME LOOP ----------
+let lastTime = 0;
+function gameLoop(t) {
+  if (!state.running) return;
+  const dt = Math.min((t - lastTime) / 16.67, 2);
+  lastTime = t;
+  state.time += dt;
+  
+  update(dt);
+  renderWorld();
+  renderMinimap();
+  
+  requestAnimationFrame(gameLoop);
+}
+
+function update(dt) {
+  const p = state.player;
+  
+  // Input keyboard
+  let kx = 0, ky = 0;
+  if (state.keys['ArrowLeft'] || state.keys['a']) kx -= 1;
+  if (state.keys['ArrowRight'] || state.keys['d']) kx += 1;
+  if (state.keys['ArrowUp'] || state.keys['w']) ky -= 1;
+  if (state.keys['ArrowDown'] || state.keys['s']) ky += 1;
+  
+  // Input joystick
+  kx += joyInput.x;
+  ky += joyInput.y;
+  
+  const mag = Math.hypot(kx, ky);
+  if (mag > 1) { kx /= mag; ky /= mag; }
+  
+  // Movement
+  const speedMul = state.energy > 20 ? 1 : 0.6;
+  p.x += kx * p.speed * speedMul * dt;
+  p.y += ky * p.speed * speedMul * dt;
+  
+  // Direction
+  if (Math.abs(kx) > Math.abs(ky)) {
+    if (kx > 0.1) p.dir = 1;
+    else if (kx < -0.1) p.dir = 3;
+  } else {
+    if (ky > 0.1) p.dir = 2;
+    else if (ky < -0.1) p.dir = 0;
+  }
+  
+  // Animasi
+  if (mag > 0.1) {
+    p.anim += dt * 0.3;
+    // Energy drain saat bergerak
+    state.energy -= dt * 0.02;
+    if (state.energy < 0) state.energy = 0;
+  } else {
+    p.anim += dt * 0.1;
+    // Regen saat diam
+    state.energy = Math.min(100, state.energy + dt * 0.05);
+  }
+  
+  // Boundary
+  p.x = Math.max(20, Math.min(WORLD_SIZE - 20, p.x));
+  p.y = Math.max(20, Math.min(WORLD_SIZE - 20, p.y));
+  
+  // Camera follow (smooth)
+  const targetCamX = p.x - W/2;
+  const targetCamY = p.y - H/2;
+  state.camera.x += (targetCamX - state.camera.x) * 0.15;
+  state.camera.y += (targetCamY - state.camera.y) * 0.15;
+  
+  // Zone detection
+  const zone = getZone(p.x, p.y);
+  if (zone.name !== state.currentZone) {
+    state.currentZone = zone.name;
+    document.getElementById('zoneName').textContent = 'Zona: ' + zone.name;
+    toast('📍 ' + zone.name);
+  }
+  
+  // Cari objek terdekat
+  let nearest = null;
+  let nearestDist = 55;
+  state.objects.forEach(obj => {
+    const dx = obj.x - p.x;
+    const dy = obj.y - p.y;
+    const d = Math.hypot(dx, dy);
+    if (d < nearestDist) { nearestDist = d; nearest = obj; }
+  });
+  state.nearObject = nearest;
+  
+  // Update objek (bobbing)
+  state.objects.forEach(o => o.bob += dt * 0.05);
+  
+  // Update particles
+  updateParticles(dt);
+  
+  // Update UI energy
+  document.getElementById('energyFill').style.width = state.energy + '%';
+  
+  // Auto-save setiap 5 detik
+  if (Math.floor(state.time) % 300 === 0 && Math.floor(state.time) > 0) {
+    if (state._lastSave !== Math.floor(state.time)) {
+      state._lastSave = Math.floor(state.time);
+      saveGame();
+    }
+  }
+}
+
+// ---------- INTERACTION ----------
+function scanNearby() {
+  const obj = state.nearObject;
+  if (!obj) {
+    toast('Tidak ada objek di dekatmu');
+    return;
+  }
+  if (state.energy < 5) {
+    toast('⚡ Energi tidak cukup!');
+    return;
+  }
+  state.energy = Math.max(0, state.energy - 5);
+  showObjectModal(obj);
+  saveGame();
+}
+
+function showObjectModal(obj) {
+  const data = CHEMISTRY_DB[obj.key];
+  const isNew = !state.discovered[obj.key];
+  const modal = document.getElementById('modal');
+  const card = document.getElementById('cardContent');
+  
+  let html = `
+    <h2>${data.name}</h2>
+    <div class="formula">${data.formula}</div>
+    <div class="type">${data.type}</div>
+    <div class="desc">${data.desc}</div>
+  `;
+  
+  if (isNew) {
+    html += `<div class="reward">✨ Penemuan Baru! +${data.reward} skor, +${data.xp} XP</div>`;
+    html += `
+      <div class="quiz">
+        <p>❓ ${data.quiz.q}</p>
+        ${data.quiz.opts.map((o, i) => 
+          `<button class="quiz-opt" data-idx="${i}" data-ans="${data.quiz.ans}">${String.fromCharCode(65+i)}. ${o}</button>`
+        ).join('')}
+      </div>
+    `;
+  } else {
+    html += `<div class="reward">✓ Sudah ditemukan sebelumnya</div>`;
+  }
+  
+  html += `<button class="close-btn" id="closeModal">TUTUP</button>`;
+  card.innerHTML = html;
+  modal.classList.add('show');
+  
+  // Quiz handlers
+  if (isNew) {
+    card.querySelectorAll('.quiz-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = parseInt(btn.dataset.idx);
+        const ans = parseInt(btn.dataset.ans);
+        const correct = idx === ans;
+        
+        card.querySelectorAll('.quiz-opt').forEach(b => {
+          b.disabled = true;
+          if (parseInt(b.dataset.idx) === ans) b.classList.add('correct');
+        });
+        
+        if (!correct) {
+          btn.classList.add('wrong');
+          // Setengah reward jika salah
+          state.score += Math.floor(data.reward * 0.5);
+          state.xp += Math.floor(data.xp * 0.5);
+          toast('❌ Jawaban salah. Setengah reward.');
+        } else {
+          state.score += data.reward;
+          state.xp += data.xp;
+          toast('✅ Benar! +' + data.reward + ' skor');
+        }
+        
+        state.discovered[obj.key] = true;
+        state.collected[obj.key] = true;
+        obj.discovered = true;
+        
+        spawnParticles(obj.x, obj.y, obj.color, 25);
+        checkLevelUp();
+        updateUI();
+        renderCollected();
+        saveGame();
+      });
+    });
+  }
+  
+  document.getElementById('closeModal').addEventListener('click', () => {
+    modal.classList.remove('show');
+  });
+}
+
+function checkLevelUp() {
+  const needed = state.level * 100;
+  while (state.xp >= needed) {
+    state.xp -= needed;
+    state.level++;
+    toast('🎉 NAIK LEVEL ' + state.level + '!');
+    state.energy = 100;
+    spawnParticles(state.player.x, state.player.y, '#fbbf24', 40);
+  }
+}
+
+// ---------- UI UPDATE ----------
+function updateUI() {
+  document.getElementById('scoreVal').textContent = state.score;
+  document.getElementById('xpVal').textContent = state.xp + '/' + (state.level*100);
+  document.getElementById('levelVal').textContent = state.level;
+}
+
+function renderCollected() {
+  const list = document.getElementById('collectedList');
+  const keys = Object.keys(CHEMISTRY_DB);
+  list.innerHTML = keys.map(k => {
+    const got = state.collected[k];
+    return `<div class="item ${got?'':'locked'}">
+      <span>${got?'✓':'○'} ${CHEMISTRY_DB[k].formula}</span>
+      <span>${CHEMISTRY_DB[k].type[0]}</span>
+    </div>`;
+  }).join('');
+}
+
+let toastTimer;
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+// ---------- JOYSTICK ----------
+const joyInput = { x: 0, y: 0 };
+const joystick = document.getElementById('joystick');
+const stick = document.getElementById('stick');
+let joyActive = false;
+let joyTouchId = null;
+let joyCenter = { x: 0, y: 0 };
+const JOY_RADIUS = 35;
+
+function getJoyCenter() {
+  const r = joystick.getBoundingClientRect();
+  return { x: r.left + r.width/2, y: r.top + r.height/2 };
+}
+
+joystick.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  joyTouchId = t.identifier;
+  joyActive = true;
+  joyCenter = getJoyCenter();
+  updateJoy(t.clientX, t.clientY);
+}, { passive: false });
+
+joystick.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const t = Array.from(e.changedTouches).find(t => t.identifier === joyTouchId);
+  if (t) updateJoy(t.clientX, t.clientY);
+}, { passive: false });
+
+joystick.addEventListener('touchend', (e) => {
+  const t = Array.from(e.changedTouches).find(t => t.identifier === joyTouchId);
+  if (t) { joyActive = false; joyInput.x = 0; joyInput.y = 0; stick.style.transform = 'translate(0,0)'; }
+});
+
+// Mouse fallback untuk desktop
+joystick.addEventListener('mousedown', (e) => {
+  joyActive = true;
+  joyCenter = getJoyCenter();
+  updateJoy(e.clientX, e.clientY);
+});
+window.addEventListener('mousemove', (e) => {
+  if (joyActive) updateJoy(e.clientX, e.clientY);
+});
+window.addEventListener('mouseup', () => {
+  if (joyActive) { joyActive = false; joyInput.x = 0; joyInput.y = 0; stick.style.transform = 'translate(0,0)'; }
+});
+
+function updateJoy(cx, cy) {
+  const dx = cx - joyCenter.x;
+  const dy = cy - joyCenter.y;
+  const d = Math.hypot(dx, dy);
+  const clamped = Math.min(d, JOY_RADIUS);
+  const nx = d > 0 ? dx / d : 0;
+  const ny = d > 0 ? dy / d : 0;
+  joyInput.x = (nx * clamped) / JOY_RADIUS;
+  joyInput.y = (ny * clamped) / JOY_RADIUS;
+  stick.style.transform = `translate(${nx * clamped}px, ${ny * clamped}px)`;
+}
+
+// ---------- KEYBOARD ----------
+window.addEventListener('keydown', (e) => {
+  state.keys[e.key] = true;
+  if (e.key === ' ' || e.key === 'e' || e.key === 'E') {
+    e.preventDefault();
+    scanNearby();
+  }
+});
+window.addEventListener('keyup', (e) => {
+  state.keys[e.key] = false;
+});
+
+// ---------- BUTTONS ----------
+document.getElementById('scanBtn').addEventListener('click', (e) => {
+  e.preventDefault();
+  scanNearby();
+});
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('startScreen').style.display = 'none';
+  startGame();
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => {
+  if (confirm('Yakin ingin reset semua progress?')) {
+    resetSave();
+  }
+});
+
+// ---------- START GAME ----------
+function startGame() {
+  state.running = true;
+  if (!loadGame()) {
+    spawnObjects();
+  } else {
+    spawnObjects();
+    // Restore discovered flag
+    state.objects.forEach(o => {
+      if (state.discovered[o.key]) o.discovered = true;
+    });
+    toast('Progress dimuat!');
+  }
+  
+  // Sync camera
+  state.camera.x = state.player.x - W/2;
+  state.camera.y = state.player.y - H/2;
+  
+  updateUI();
+  renderCollected();
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+}
+
+// Auto-load jika ada save, tapi tetap tampilkan start screen
+window.addEventListener('load', () => {
+  resize();
+  state.camera.x = state.player.x - W/2;
+  state.camera.y = state.player.y - H/2;
+  // Preview render
+  spawnObjects();
+  const previewLoop = () => {
+    if (!state.running) {
+      renderWorld();
+      requestAnimationFrame(previewLoop);
+    }
+  };
+  previewLoop();
+});
+
+// Save saat keluar
+window.addEventListener('beforeunload', saveGame);
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) saveGame();
+});
+</script>
+<script src="eduquest.js"></script>
+<script>
+  // Pastikan ada siswa login
+  if (!EduQuest.getCurrentSlug()) {
+    alert('Silakan login dulu di halaman utama.');
+    window.location.href = 'index.html';
+  }
+
+  // Ketika siswa menjawab benar:
+  function benar() {
+    EduQuest.addXP('chemistry', 20);   // +20 XP, +2 koin
+  }
+
+  // Ketika sesi selesai, simpan skor:
+  function selesai(skor) {
+    EduQuest.addScore('chemistry', skor);
+    EduQuest.addBadge('chemistry', 'first_win');
+  }
+</script>
+</body>
+</html>
