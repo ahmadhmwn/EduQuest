@@ -1,5 +1,6 @@
 # EduQuest
 EduQuest — Belajar sambil bermain: dashboard gamifikasi dengan 4 mini-game edukasi (Chemistry, Biology, Math, Physics) yang menyimpan progres tiap siswa secara otomatis
+Deployment: [![Netlify Status](https://api.netlify.com/api/v1/badges/db6dcb73-612a-4fcf-99c9-64ad344cc91a/deploy-status)](https://app.netlify.com/projects/eduquestapps/deploys)
 
 # EduQuest — Gamified Learning Dashboard
 
