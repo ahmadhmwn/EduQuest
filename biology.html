@@ -6,70 +6,84 @@
 <title>Tumbuh Kembang - Gamifikasi IPA SMP</title>
 <style>
   :root{
-    --green-dark:#1e6b3a;
-    --green:#2e9e5b;
-    --green-light:#7ed957;
-    --soil:#5b3a1e;
-    --soil-light:#8a5a2b;
-    --sky1:#bde9ff;
-    --sky2:#e8f8ff;
+    --bg-grad-top:#87CEEB;
+    --bg-grad-bottom:#E0F6FF;
+    --soil:#6B4226;
+    --soil-dark:#4A2C17;
+    --leaf:#4CAF50;
+    --leaf-dark:#2E7D32;
+    --accent:#FF9800;
     --card:#ffffff;
-    --text:#1c2b22;
-    --accent:#ffb703;
-    --danger:#e63946;
+    --text:#213547;
+    --danger:#E53935;
+    --success:#43A047;
+    --shadow:0 8px 24px rgba(0,0,0,.15);
   }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;height:100%;}
   body{
-    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
-    background:linear-gradient(180deg,var(--sky1),var(--sky2));
+    font-family:'Segoe UI',Roboto,system-ui,-apple-system,sans-serif;
+    background:linear-gradient(180deg,var(--bg-grad-top),var(--bg-grad-bottom));
     color:var(--text);
     display:flex;
     justify-content:center;
+    align-items:center;
+    min-height:100vh;
     overflow:hidden;
   }
   #app{
     width:100%;
     max-width:430px;
-    height:100dvh;
+    height:100vh;
+    max-height:900px;
+    position:relative;
     display:flex;
     flex-direction:column;
-    position:relative;
+    background:linear-gradient(180deg,var(--bg-grad-top),var(--bg-grad-bottom));
     overflow:hidden;
+    box-shadow:var(--shadow);
   }
 
-  /* ===== HEADER ===== */
+  /* ====== HEADER ====== */
   header{
     padding:10px 14px 6px;
     display:flex;
-    align-items:center;
     justify-content:space-between;
-    z-index:5;
+    align-items:center;
+    z-index:20;
+    flex:0 0 auto;
   }
   header h1{
-    font-size:16px;
-    margin:0;
-    color:var(--green-dark);
+    font-weight:800;
+    font-size:15px;
+    color:#0B5E2E;
     letter-spacing:.3px;
+    margin:0;
   }
-  header h1 span{font-size:11px;display:block;font-weight:400;color:#4a6b57;}
+  header h1 span{
+    display:block;
+    font-weight:500;
+    font-size:10px;
+    color:#3a7d54;
+  }
   .badge-mini{
-    background:var(--accent);
-    color:#5a3d00;
+    background:rgba(255,255,255,.85);
+    border-radius:20px;
+    padding:4px 10px;
     font-size:11px;
     font-weight:700;
-    padding:4px 8px;
-    border-radius:20px;
-    box-shadow:0 2px 6px rgba(0,0,0,.12);
+    color:#2E7D32;
+    box-shadow:0 2px 6px rgba(0,0,0,.08);
   }
 
-  /* ===== GARDEN / CANVAS AREA ===== */
+  /* ====== GARDEN (flex:1 → mengecil saat panel soal muncul) ====== */
   #garden{
     position:relative;
     flex:1 1 auto;
     min-height:0;
     display:flex;
     flex-direction:column;
+    overflow:hidden;
   }
   #glcanvas{
     position:absolute;
@@ -78,17 +92,60 @@
     height:100%;
     display:block;
     touch-action:none;
+    z-index:2;
   }
   #soil-bar{
     position:absolute;
     left:0;right:0;bottom:0;
-    height:26%;
-    background:linear-gradient(180deg,var(--soil-light),var(--soil));
-    border-top:4px solid #6f4a25;
+    height:30%;
+    background:linear-gradient(180deg,var(--soil) 0%,var(--soil-dark) 100%);
     z-index:1;
+    border-top-left-radius:60% 22px;
+    border-top-right-radius:60% 22px;
+  }
+  #soil-bar::after{
+    content:"";
+    position:absolute;top:0;left:0;right:0;height:10px;
+    background:repeating-linear-gradient(90deg,#7d4f2d 0 8px,#6B4226 8px 16px);
+    opacity:.5;
   }
 
-  /* ===== STATUS PANEL ===== */
+  /* ====== MATAHARI & AWAN ====== */
+  .sun{
+    position:absolute;
+    top:60px;right:18px;
+    width:44px;height:44px;
+    border-radius:50%;
+    background:radial-gradient(circle at 35% 35%,#FFF3B0,#FFC107 60%,#FF9800);
+    box-shadow:0 0 22px rgba(255,193,7,.8);
+    animation:sunPulse 4s ease-in-out infinite;
+    z-index:3;
+    pointer-events:none;
+  }
+  @keyframes sunPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.08);}}
+
+  .cloud{
+    position:absolute;
+    background:rgba(255,255,255,.9);
+    border-radius:50%;
+    filter:blur(.3px);
+    z-index:3;
+    pointer-events:none;
+  }
+  .cloud::before,.cloud::after{
+    content:"";position:absolute;background:inherit;border-radius:50%;
+  }
+  .cloud.c1{width:54px;height:20px;top:80px;left:-70px;animation:drift 26s linear infinite;}
+  .cloud.c1::before{width:26px;height:26px;top:-12px;left:8px;}
+  .cloud.c1::after{width:20px;height:20px;top:-9px;left:28px;}
+
+  .cloud.c2{width:40px;height:16px;top:130px;left:-60px;animation:drift 34s linear infinite 6s;opacity:.75;}
+  .cloud.c2::before{width:20px;height:20px;top:-9px;left:6px;}
+  .cloud.c2::after{width:16px;height:16px;top:-7px;left:22px;}
+
+  @keyframes drift{from{transform:translateX(0);}to{transform:translateX(560px);}}
+
+  /* ====== STATUS PANEL ====== */
   #status{
     position:absolute;
     top:8px;left:8px;right:8px;
@@ -99,84 +156,107 @@
     pointer-events:none;
   }
   .progress-wrap{
-    background:rgba(255,255,255,.82);
-    border-radius:14px;
-    padding:7px 10px;
+    background:rgba(255,255,255,.85);
+    border-radius:16px;
+    padding:8px 12px;
     box-shadow:0 3px 10px rgba(0,0,0,.08);
     backdrop-filter:blur(4px);
   }
   .progress-label{
     display:flex;justify-content:space-between;
-    font-size:11px;font-weight:600;color:#2b4a37;
-    margin-bottom:4px;
+    font-size:11px;font-weight:700;color:#2E7D32;
+    margin-bottom:5px;
   }
   .bar{
     height:9px;background:#dbe9df;border-radius:6px;overflow:hidden;
   }
   .bar>i{
     display:block;height:100%;width:0%;
-    background:linear-gradient(90deg,var(--green),var(--green-light));
+    background:linear-gradient(90deg,#81C784,var(--leaf));
     border-radius:6px;
     transition:width .6s cubic-bezier(.34,1.3,.64,1);
   }
   .stage-tag{
     align-self:flex-start;
     font-size:11px;
-    background:var(--green-dark);
+    background:var(--leaf-dark);
     color:#fff;
     padding:4px 10px;
     border-radius:20px;
-    font-weight:600;
+    font-weight:700;
     box-shadow:0 2px 6px rgba(0,0,0,.15);
   }
 
-  /* ===== QUIZ PANEL ===== */
+  /* ====== QUIZ PANEL (flex item di bawah garden — TIDAK overlay) ====== */
   #quizPanel{
-    position:absolute;
-    left:0;right:0;bottom:0;
+    position:relative;
+    flex:0 0 auto;
     z-index:6;
     background:var(--card);
     border-radius:22px 22px 0 0;
-    padding:14px 16px calc(16px + env(safe-area-inset-bottom));
+    padding:12px 16px calc(14px + env(safe-area-inset-bottom));
     box-shadow:0 -6px 24px rgba(0,0,0,.18);
-    transform:translateY(0);
-    transition:transform .45s cubic-bezier(.34,1.2,.64,1);
-    max-height:62%;
+    max-height:52vh;
     display:flex;
     flex-direction:column;
+    margin-top:-18px;
+    transition:max-height .4s cubic-bezier(.34,1.2,.64,1),
+               padding .4s ease,
+               opacity .3s ease;
   }
-  #quizPanel.hidden{transform:translateY(115%);}
+  #quizPanel.hidden{
+    max-height:0;
+    padding-top:0;
+    padding-bottom:0;
+    opacity:0;
+    pointer-events:none;
+    overflow:hidden;
+    margin-top:0;
+  }
+  #quizPanel::before{
+    content:"";
+    width:42px;height:4px;border-radius:4px;background:#d5dbe0;
+    margin:-4px auto 8px;
+    display:block;
+    flex:0 0 auto;
+  }
   .q-top{
     display:flex;justify-content:space-between;align-items:center;
     margin-bottom:8px;
+    flex:0 0 auto;
   }
   .q-num{
-    font-size:11px;font-weight:700;color:var(--green-dark);
-    background:#e4f6ea;padding:4px 10px;border-radius:20px;
+    font-size:11px;font-weight:700;color:var(--leaf-dark);
+    background:#E8F5E9;padding:4px 10px;border-radius:20px;
   }
   .q-score{font-size:11px;font-weight:700;color:#8a5a2b;}
   #questionText{
-    font-size:15px;font-weight:600;line-height:1.4;
-    margin:4px 0 12px;
-    color:#173023;
+    font-size:14px;font-weight:700;line-height:1.35;
+    margin:4px 0 10px;
+    color:#263238;
+    min-height:34px;
+    flex:0 0 auto;
   }
   #answers{
-    display:flex;flex-direction:column;gap:8px;
+    display:flex;flex-direction:column;gap:6px;
     overflow-y:auto;
+    flex:1 1 auto;
+    min-height:0;
   }
   .ans-btn{
     text-align:left;
-    border:2px solid #dcece2;
-    background:#f7fdf9;
-    color:#1c2b22;
-    font-size:14px;
-    font-weight:500;
-    padding:11px 13px;
-    border-radius:14px;
+    border:2px solid #E0E8E3;
+    background:#F5F8F6;
+    color:#37474F;
+    font-size:12.5px;
+    font-weight:600;
+    padding:9px 11px;
+    border-radius:12px;
     cursor:pointer;
-    transition:.18s;
+    transition:background .15s,border-color .15s,transform .1s;
     font-family:inherit;
     display:flex;align-items:center;gap:9px;
+    flex:0 0 auto;
   }
   .ans-btn .letter{
     flex:0 0 24px;height:24px;border-radius:50%;
@@ -186,12 +266,12 @@
   }
   .ans-btn:active{transform:scale(.98);}
   .ans-btn.correct{
-    background:#d9f7e3;border-color:var(--green);
+    background:#E8F5E9;border-color:var(--success);color:#1B5E20;
     animation:pop .3s;
   }
-  .ans-btn.correct .letter{background:var(--green);color:#fff;}
+  .ans-btn.correct .letter{background:var(--success);color:#fff;}
   .ans-btn.wrong{
-    background:#ffe1e4;border-color:var(--danger);
+    background:#FFEBEE;border-color:var(--danger);color:#B71C1C;
     animation:shake .35s;
   }
   .ans-btn.wrong .letter{background:var(--danger);color:#fff;}
@@ -200,18 +280,18 @@
   @keyframes pop{0%{transform:scale(1);}50%{transform:scale(1.04);}100%{transform:scale(1);}}
   @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-6px);}75%{transform:translateX(6px);}}
 
-  /* ===== FEEDBACK TOAST ===== */
+  /* ====== TOAST ====== */
   #toast{
     position:absolute;
     top:50%;left:50%;
     transform:translate(-50%,-50%) scale(.8);
     z-index:20;
-    background:rgba(20,50,35,.92);
+    background:#263238;
     color:#fff;
     padding:14px 22px;
     border-radius:16px;
     font-weight:700;
-    font-size:14px;
+    font-size:13px;
     text-align:center;
     opacity:0;
     pointer-events:none;
@@ -220,10 +300,10 @@
     box-shadow:0 8px 30px rgba(0,0,0,.3);
   }
   #toast.show{opacity:1;transform:translate(-50%,-50%) scale(1);}
-  #toast.good{background:rgba(30,140,70,.95);}
-  #toast.bad{background:rgba(200,45,60,.95);}
+  #toast.good{background:linear-gradient(180deg,#66BB6A,#43A047);}
+  #toast.bad{background:linear-gradient(180deg,#EF5350,#E53935);}
 
-  /* ===== REWARD MODAL ===== */
+  /* ====== REWARD MODAL ====== */
   #reward{
     position:absolute;inset:0;z-index:30;
     background:rgba(12,30,20,.6);
@@ -255,43 +335,44 @@
   .badge-big{
     width:110px;height:110px;margin:0 auto 12px;
     border-radius:50%;
-    background:conic-gradient(from 0deg,#ffd54a,#ffb703,#ff9500,#ffd54a);
+    background:conic-gradient(from 0deg,#FFD54F,#FFB300,#FFD54F,#FFB300,#FFD54F);
     display:flex;align-items:center;justify-content:center;
-    box-shadow:0 8px 24px rgba(255,150,0,.45), inset 0 -6px 14px rgba(180,90,0,.3);
+    box-shadow:0 0 0 6px #FFF8E1, 0 8px 22px rgba(255,152,0,.5);
     position:relative;
     animation:spinBadge 6s linear infinite;
   }
   @keyframes spinBadge{to{transform:rotate(360deg);}}
   .badge-inner{
     width:88px;height:88px;border-radius:50%;
-    background:#fff7e0;
+    background:#fff;
     display:flex;align-items:center;justify-content:center;
     font-size:44px;
     animation:spinBadgeRev 6s linear infinite;
   }
   @keyframes spinBadgeRev{to{transform:rotate(-360deg);}}
   .reward-card h2{
-    margin:6px 0 4px;font-size:19px;color:var(--green-dark);
+    margin:6px 0 4px;font-size:18px;color:#1B5E20;font-weight:800;
   }
   .reward-card p{
-    font-size:13px;color:#4a6b57;margin:4px 0 16px;line-height:1.5;
+    font-size:12.5px;color:#546E7A;margin:4px 0 16px;line-height:1.5;
   }
   .btn{
-    border:none;font-family:inherit;font-weight:700;font-size:14px;
-    padding:13px 18px;border-radius:16px;cursor:pointer;width:100%;
-    transition:.2s;
+    border:none;font-family:inherit;font-weight:800;font-size:14px;
+    padding:13px 18px;border-radius:14px;cursor:pointer;width:100%;
+    transition:transform .12s, box-shadow .2s;
   }
   .btn:active{transform:scale(.97);}
   .btn-primary{
-    background:linear-gradient(135deg,var(--green),var(--green-dark));
-    color:#fff;box-shadow:0 6px 18px rgba(30,107,58,.35);
+    background:linear-gradient(180deg,#66BB6A,#43A047);
+    color:#fff;box-shadow:0 6px 0 #2E7D32, 0 8px 16px rgba(46,125,50,.35);
   }
+  .btn-primary:active{box-shadow:0 2px 0 #2E7D32;}
   .btn-ghost{
-    background:#eef6f0;color:#2b4a37;margin-top:8px;
-    box-shadow:none;
+    background:#EEF3F0;color:#2E7D32;margin-top:8px;
+    box-shadow:inset 0 0 0 2px #C8E6C9;
   }
 
-  /* ===== START SCREEN ===== */
+  /* ====== START SCREEN ====== */
   #start{
     position:absolute;inset:0;z-index:40;
     background:linear-gradient(180deg,#d6f2ff,#eafaf0);
@@ -301,18 +382,18 @@
   #start.hide{opacity:0;pointer-events:none;}
   .start-emoji{font-size:64px;margin-bottom:6px;animation:float 2.6s ease-in-out infinite;}
   @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
-  #start h1{font-size:23px;color:var(--green-dark);margin:4px 0 6px;}
-  #start p{font-size:13.5px;color:#4a6b57;line-height:1.6;margin:0 0 22px;max-width:300px;}
+  #start h1{font-size:23px;color:#1B5E20;margin:4px 0 6px;font-weight:800;}
+  #start p{font-size:13.5px;color:#546E7A;line-height:1.6;margin:0 0 22px;max-width:300px;}
   .info-list{
     text-align:left;font-size:12.5px;color:#2b4a37;
-    background:rgba(255,255,255,.7);border-radius:16px;
+    background:rgba(255,255,255,.75);border-radius:16px;
     padding:14px 16px;margin-bottom:24px;width:100%;max-width:320px;
     box-shadow:0 4px 14px rgba(0,0,0,.06);
   }
   .info-list div{margin:5px 0;display:flex;gap:8px;align-items:flex-start;}
-  .info-list b{color:var(--green-dark);}
+  .info-list b{color:#1B5E20;}
 
-  /* ===== BOTTOM ACTION BUTTONS ===== */
+  /* ====== GARDEN BUTTONS ====== */
   #gardenBtns{
     position:absolute;
     top:8px;right:8px;
@@ -323,12 +404,12 @@
   .mini-btn{
     background:rgba(255,255,255,.9);
     border:none;
-    border-radius:14px;
-    padding:7px 11px;
+    border-radius:20px;
+    padding:6px 11px;
     font-size:11px;
     font-weight:700;
-    color:var(--green-dark);
-    box-shadow:0 3px 10px rgba(0,0,0,.12);
+    color:#2E7D32;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
     cursor:pointer;
     font-family:inherit;
     display:flex;align-items:center;gap:4px;
@@ -336,7 +417,7 @@
   }
   .mini-btn:active{transform:scale(.95);}
 
-  /* ===== GARDEN MODAL (Kebunku) ===== */
+  /* ====== KEBUN MODAL ====== */
   #kebun{
     position:absolute;inset:0;z-index:35;
     background:rgba(12,30,20,.6);
@@ -365,14 +446,14 @@
     margin-bottom:4px;
   }
   .kebun-header h2{
-    margin:0;font-size:17px;color:var(--green-dark);
+    margin:0;font-size:17px;color:#1B5E20;font-weight:800;
   }
   .kebun-header .close{
     background:#eef6f0;border:none;width:30px;height:30px;border-radius:50%;
     font-size:15px;color:#2b4a37;cursor:pointer;font-weight:700;
   }
   .kebun-sub{
-    font-size:11.5px;color:#4a6b57;margin:0 0 14px;
+    font-size:11.5px;color:#546E7A;margin:0 0 14px;
   }
   .kebun-grid{
     display:grid;
@@ -397,8 +478,8 @@
     transition:.2s;
   }
   .plant-slot.filled{
-    background:linear-gradient(180deg,#e6f9ed,#c8f0d5);
-    border-color:var(--green);
+    background:linear-gradient(180deg,#E8F5E9,#C8E6C9);
+    border-color:var(--leaf);
     cursor:pointer;
   }
   .plant-slot.filled:active{transform:scale(.95);}
@@ -409,7 +490,7 @@
   }
   .plant-slot .num{
     position:absolute;top:4px;left:6px;
-    font-size:9px;font-weight:800;color:var(--green-dark);
+    font-size:9px;font-weight:800;color:#1B5E20;
     background:rgba(255,255,255,.85);
     border-radius:8px;padding:1px 5px;
   }
@@ -435,13 +516,31 @@
   }
   .kebun-actions .btn{flex:1;}
 
-  /* small screens */
-  @media(max-height:640px){
-    #questionText{font-size:14px;}
-    .ans-btn{font-size:13px;padding:9px 11px;}
+  @media(max-height:700px){
+    #quizPanel{max-height:48vh;}
+    #questionText{font-size:13px;}
+    .ans-btn{font-size:12px;padding:8px 10px;}
     #start h1{font-size:20px;}
     .start-emoji{font-size:52px;}
   }
+
+    .btn-back{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    background:rgba(255,255,255,.9);
+    color:#2E7D32;
+    text-decoration:none;
+    font-size:11px;
+    font-weight:700;
+    padding:6px 11px;
+    border-radius:20px;
+    box-shadow:0 2px 6px rgba(0,0,0,.1);
+    font-family:inherit;
+    transition:.15s;
+    margin-left:6px;
+  }
+  .btn-back:active{transform:scale(.95);}
 </style>
 </head>
 <body>
@@ -460,25 +559,29 @@
       <div>🌻 <span>Kumpulkan badge dengan <b>menanam berkali-kali</b>.</span></div>
     </div>
     <button class="btn btn-primary" style="max-width:300px" id="startBtn">🌱 Mulai Menanam</button>
+    <br>
+    <a href="index.html" class="btn-back">← Kembali</a>
   </div>
 
   <!-- ===== HEADER ===== -->
   <header>
+    <a href="index.html" class="btn-back">← Kembali</a>
     <h1>🌿 Tumbuh Kembang<span>IPA SMP · Pertumbuhan &amp; Perkembangan</span></h1>
     <div class="badge-mini" id="badgeCount">🏅 0</div>
   </header>
 
-  <!-- ===== GARDEN ===== -->
+  <!-- ===== GARDEN (flex:1) ===== -->
   <div id="garden">
     <div id="soil-bar"></div>
+    <div class="sun"></div>
+    <div class="cloud c1"></div>
+    <div class="cloud c2"></div>
     <canvas id="glcanvas"></canvas>
 
-    <!-- quick action buttons -->
     <div id="gardenBtns">
       <button class="mini-btn" id="openKebunBtn">🌻 Kebunku</button>
     </div>
 
-    <!-- status -->
     <div id="status">
       <div class="progress-wrap">
         <div class="progress-label">
@@ -490,18 +593,7 @@
       <div class="stage-tag" id="stageTag">🌰 Biji</div>
     </div>
 
-    <!-- toast -->
     <div id="toast"></div>
-
-    <!-- quiz panel -->
-    <div id="quizPanel" class="hidden">
-      <div class="q-top">
-        <span class="q-num" id="qNum">Soal 1 / 10</span>
-        <span class="q-score" id="qScore">Benar: 0</span>
-      </div>
-      <div id="questionText">Memuat soal…</div>
-      <div id="answers"></div>
-    </div>
 
     <!-- reward modal -->
     <div id="reward">
@@ -529,9 +621,22 @@
         </div>
       </div>
     </div>
-
   </div>
+
+  <!-- ===== QUIZ PANEL (di LUAR #garden — jadi flex item di bawah) ===== -->
+  <div id="quizPanel" class="hidden">
+    <div class="q-top">
+      <span class="q-num" id="qNum">Soal 1 / 10</span>
+      <span class="q-score" id="qScore">Benar: 0</span>
+    </div>
+    <div id="questionText">Memuat soal…</div>
+    <div id="answers"></div>
+  </div>
+
 </div>
+
+<!-- three.js CDN (HARUS di atas skrip game) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <script>
 /* ============================================================
@@ -624,7 +729,7 @@ const STAGES = [
   {name:"🍎 Berbuah",     pct:100, emoji:"🍎", label:"Berbuah"}
 ];
 
-/* ---------- PLANT VARIETIES (untuk koleksi kebun) ---------- */
+/* ---------- PLANT VARIETIES ---------- */
 const VARIETIES = [
   {emoji:"🌻", name:"Bunga Matahari", color:"#ffd54a"},
   {emoji:"🌺", name:"Kembang Sepatu", color:"#ff7bb0"},
@@ -651,8 +756,8 @@ const state = {
   plantProgress: 0,
   targetProgress: 0,
   locked: false,
-  garden: [],              // koleksi tanaman yang berhasil
-  currentVariety: 0        // index varietas tanaman sekarang
+  garden: [],
+  currentVariety: 0
 };
 
 /* ---------- STORAGE (JSON) ---------- */
@@ -701,8 +806,8 @@ function initWebGL(){
 
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 1.6, 6.2);
-  camera.lookAt(0, 1.1, 0);
+  camera.position.set(0, 1.8, 6.5);
+  camera.lookAt(0, 1.3, 0);
 
   scene.add(new THREE.AmbientLight(0xffffff, 0.85));
   const dir = new THREE.DirectionalLight(0xffffff, 0.9);
@@ -743,7 +848,6 @@ function clearGroup(g){
   }
 }
 
-/* warna kelopak berdasarkan varietas */
 function petalColor(vi){
   const colors = [0xffd54a, 0xff7bb0, 0xff5c8a, 0xe63946, 0xffb3d1,
                   0xfff3a8, 0xe63946, 0xd62828, 0xff9500, 0xe63946,
@@ -757,14 +861,12 @@ function fruitColor(vi){
   return colors[(vi+3) % colors.length];
 }
 
-/* ---- Build plant based on stage 0..7 ---- */
 function buildPlant(stage, varietyIdx){
   if(!glReady) return;
   const vi = (varietyIdx === undefined) ? state.currentVariety : varietyIdx;
   clearGroup(plantGroup);
   const s = stage;
 
-  // seed
   const seed = new THREE.Mesh(new THREE.SphereGeometry(0.16, 16, 12), mat(0x8a5a2b, 0.9));
   seed.position.set(0, 0.14, 0);
   seed.scale.set(1, 0.8, 1);
@@ -903,14 +1005,16 @@ function animate(){
 
 function resizeGL(){
   if(!glReady) return;
-  const garden = document.getElementById("garden");
-  const w = garden.clientWidth;
-  const h = garden.clientHeight;
+  const canvas = document.getElementById("glcanvas");
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  if(w === 0 || h === 0) return;
   renderer.setSize(w, h, false);
   camera.aspect = w/h;
   camera.updateProjectionMatrix();
 }
 window.addEventListener("resize", resizeGL);
+window.addEventListener("orientationchange", ()=>setTimeout(resizeGL, 250));
 
 /* ============================================================
    UI LOGIC
@@ -1043,7 +1147,6 @@ function finishGame(){
   updateStatusUI();
   els.quizPanel.classList.add("hidden");
 
-  // tambahkan ke koleksi kebun
   const variety = VARIETIES[state.currentVariety % VARIETIES.length];
   state.garden.push({
     variety: state.currentVariety % VARIETIES.length,
@@ -1064,10 +1167,12 @@ function finishGame(){
   els.reward.classList.add("show");
 
   showToast(`🎉 +1 Badge ${variety.emoji}`, "good");
+
+  // Canvas melebar lagi setelah panel menutup
+  setTimeout(resizeGL, 450);
 }
 
 function startPlanting(){
-  // reset sesi tanam baru, tapi pertahankan badge & garden
   state.qIndex = 0;
   state.correctCount = 0;
   state.attempts = 0;
@@ -1076,7 +1181,6 @@ function startPlanting(){
   state.targetProgress = 0;
   state.locked = false;
 
-  // pilih varietas berikutnya (bergilir)
   state.currentVariety = state.garden.length % VARIETIES.length;
 
   buildPlant(0, state.currentVariety);
@@ -1087,6 +1191,9 @@ function startPlanting(){
 
   const v = VARIETIES[state.currentVariety];
   showToast(`🌱 Menanam ${v.emoji} ${v.name}`, "good");
+
+  // Canvas mengecil setelah panel muncul — resize agar pas
+  setTimeout(resizeGL, 450);
 }
 
 /* ---------- KEBUN ---------- */
@@ -1185,13 +1292,12 @@ els.kebunPlantBtn.addEventListener("click", ()=>{
     if(initWebGL()){
       resizeGL();
       buildPlant(state.stage, state.currentVariety);
+      setTimeout(resizeGL, 150);
+      setTimeout(resizeGL, 500);
     }
   });
 })();
 </script>
-
-<!-- three.js CDN -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
 <!-- ============ EDUQUEST SYNC ADAPTER ============ -->
 <script src="eduquest.js"></script>
@@ -1199,32 +1305,27 @@ els.kebunPlantBtn.addEventListener("click", ()=>{
 (function(){
   if (typeof EduQuest === 'undefined') return;
   const slug = EduQuest.getCurrentSlug();
-  if (!slug) return; // tidak ada siswa login, lewati
+  if (!slug) return;
 
-  const LEGACY_KEY = "tumbuhkembang_save_v2"; // key save biology kamu
+  const LEGACY_KEY = "tumbuhkembang_save_v2";
 
   function syncBiology() {
     let raw;
     try { raw = JSON.parse(localStorage.getItem(LEGACY_KEY) || "{}"); }
     catch(e) { raw = {}; }
 
-    // Konversi ke format EduQuest:
-    //   badges  → XP (1 badge = 100 XP)  & plays (1 badge = 1x main)
-    //   garden  → total tanaman yg berhasil ditanam
     const badges  = Number(raw.badges || 0);
     const garden  = Array.isArray(raw.garden) ? raw.garden.length : 0;
 
-    const xp    = badges * 100;      // 1 badge = 100 XP
-    const plays = badges;            // 1 badge = 1 sesi selesai
+    const xp    = badges * 100;
+    const plays = badges;
     const coins = Math.floor(xp / 10);
 
-    // Badge list → kumpulan nama unik
     const badgeNames = (raw.garden || [])
       .map(g => g && g.name)
       .filter(Boolean)
-      .slice(-20); // simpan 20 terakhir
+      .slice(-20);
 
-    // Skor history: gunakan waktu tanam sebagai "score" ringan
     const scores = (raw.garden || []).map((g, i) => ({
       score: 100,
       at: g.grownAt || new Date().toISOString()
@@ -1240,10 +1341,8 @@ els.kebunPlantBtn.addEventListener("click", ()=>{
     });
   }
 
-  // Sync pertama
   syncBiology();
 
-  // Auto-sync: pantau perubahan localStorage setiap 2 detik
   let lastRaw = localStorage.getItem(LEGACY_KEY);
   setInterval(() => {
     const now = localStorage.getItem(LEGACY_KEY);
@@ -1253,13 +1352,11 @@ els.kebunPlantBtn.addEventListener("click", ()=>{
     }
   }, 2000);
 
-  // Sync saat keluar
   window.addEventListener('beforeunload', syncBiology);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) syncBiology();
   });
 
-  // Back button → sync
   window.addEventListener('pagehide', syncBiology);
 })();
 </script>
